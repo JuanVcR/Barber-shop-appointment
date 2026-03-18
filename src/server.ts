@@ -1,30 +1,22 @@
-import { buildApp } from "./app.js";
-import { env } from "./config/env.js";
-import { createWhatsAppClient } from "./bot/whatsapp.js";
-import { handleIncomingText } from "./bot/handlers.js";
+import fastify from "fastify";
+import { startWhatsAppBot } from "./bot/whatsapp.js";
 
-async function bootstrap() {
-  const app = buildApp();
+const app = fastify();
 
-console.log(await handleIncomingText('5511999999999', 'oi'));
-console.log(await handleIncomingText('5511999999999', '1'));
-console.log(await handleIncomingText('5511999999999', '3'));
-console.log(await handleIncomingText('5511999999999', 'Joao'));
+const barbershops = [
+  'barbearia-Alpha',
+  'barbershop-Odnan',
+  'barbershop-Centro'
+];
 
-
-  const whatsapp = createWhatsAppClient();
-
-  await whatsapp.initialize();
-
-  await app.listen({
-    port: env.PORT,
-    host: '0.0.0.0'
-  });
-
-  console.log(`Server is running on port ${env.PORT}`);
+for (const id of barbershops) {
+  startWhatsAppBot(id);
 }
 
-bootstrap().catch((error) => {
-  console.error(error);
-  process.exit(1);  
+app.get('/', async (request, reply) => {
+  return { ok: true };
+});
+
+app.listen({ port: 3000 }).then(() => {
+  console.log('Server is running');
 });
