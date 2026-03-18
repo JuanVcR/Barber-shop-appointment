@@ -17,3 +17,8 @@ duração do serviço
 valores
 
 mensagem de boas-vindas
+
+________________________________________________________
+
+AREA DO BARBEIRO 
+AREA DO USUARIO

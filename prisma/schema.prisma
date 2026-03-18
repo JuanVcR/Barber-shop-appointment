@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Barbershop {
+  id String @id @default(uuid())
+
+  name String
+  slug String @unique
+
+  phoneOwner String?
+
+  barbers  Barber[]
+  services Service[]
+  bookings Booking[]
+
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id String @id @default(uuid())
+
+  name     String
+  email    String @unique
+  password String
+  phone    String @unique
+
+  bookings Booking[]
+
+  createdAt DateTime @default(now())
+}
+
+model Barber {
+  id String @id @default(uuid())
+
+  name     String
+  email    String
+  password String
+  phone    String
+
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+
+  createdAt DateTime  @default(now())
+  bookings  Booking[]
+}
+
+model Service {
+  id String @id @default(uuid())
+
+  name     String
+  price    Float
+  duration Int
+
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+
+  createdAt DateTime  @default(now())
+  bookings  Booking[]
+}
+
+model Booking {
+  id String @id @default(uuid())
+
+  day  String
+  time String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  barberId String
+  barber   Barber @relation(fields: [barberId], references: [id])
+
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+
+  createdAt DateTime @default(now())
+}
