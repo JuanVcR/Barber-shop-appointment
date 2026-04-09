@@ -21,4 +21,5 @@ lerna-debug.log*
 Thumbs.db
 coverage/
 .cache/
-tmp/
+tmp/.env
+node_modules/
