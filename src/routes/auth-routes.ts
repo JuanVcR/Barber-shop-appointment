@@ -1,35 +1,18 @@
-import type { FastifyInstance } from "fastify";
-import { prisma } from "../database/prisma.js";
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken'
+import type { FastifyInstance } from 'fastify';
+import { authController } from '../controllers/auth-controller.js';
+import { authMiddleware } from '../middlewares/auth.js';
 
 export async function authRoutes(app: FastifyInstance) {
-  app.post('/register', async (req) => {
-    const {name, email, password, phone} = req.body as any
+  app.post('/register', authController.register);
+  app.post('/login', authController.login);
 
-    const hash = await bcrypt.hash(password, 10)
+  app.post('/forgot-password/user', authController.forgotUserPassword);
+  app.post('/forgot-password/barber', authController.forgotBarberPassword);
+  app.post('/reset-password', authController.resetPassword);
 
-    const user = await prisma.user.create({
-      data: { name, email, password: hash, phone}
-    })
-
-    return user
-  })
-
-  app.post('/login', async (req) => {
-    const { email, password } = req.body as any
-
-    const user = await prisma.user.findUnique({
-      where: { email }
-    })
-    if (!user) throw new Error('usuario nao encontrado')
-    
-    const valid = await bcrypt.compare(password, user.password)
-
-    if (!valid) throw new Error('Senha invalida')
-
-    const token = jwt.sign({ id: user.id }, 'secret')
-
-    return { token }
-  })
+  app.patch(
+    '/me/password',
+    { preHandler: authMiddleware },
+    authController.changePassword
+  );
 }

@@ -1,16 +1,18 @@
-import { store } from "../config/data/store.js";
-import type { BarbershopSettings } from "../types.js"; 
+import { AppError } from '../errors/app-error.js';
+import { barbershopRepository } from '../repositories/barbershop-repository.js';
 
-export const BarbershopService = {
-  list() {
-    return store.getBarbershops();
+export const barbershopService = {
+  async list() {
+    return barbershopRepository.findMany();
   },
 
-  getById(id: string) {
-    return store.getBarbershopById(id);
-  },
+  async getBySlug(slug: string) {
+    const barbershop = await barbershopRepository.findBySlug(slug);
 
-  save(settings: BarbershopSettings) {
-    return store.saveBarbershop(settings);
-  }
+    if (!barbershop) {
+      throw new AppError('Barbearia nao encontrada', 404);
+    }
+
+    return barbershop;
+  },
 };

@@ -1,22 +1,32 @@
-import fastify from "fastify";
-import { startWhatsAppBot } from "./bot/whatsapp.js";
+import 'dotenv/config';
+import { buildApp } from './app.js';
+import { env } from './config/env.js';
+import { startWhatsAppBot } from './bot/whatsapp.js';
 
-const app = fastify();
+async function bootstrap() {
+  const app = await buildApp();
 
-const barbershops = [
-  'barbearia-Alpha',
-  'barbershop-Odnan',
-  'barbershop-Centro'
-];
+  await app.listen({
+    port: env.PORT,
+    host: '0.0.0.0',
+  });
 
-for (const id of barbershops) {
-  startWhatsAppBot(id);
+  if (env.ENABLE_WHATSAPP) {
+    const barbershopIds = [
+      'barbearia-alpha',
+      'barbearia-odnan',
+      'barbearia-centro',
+    ];
+
+    for (const id of barbershopIds) {
+      startWhatsAppBot(id);
+    }
+  }
+
+  console.log(`Server is running on port ${env.PORT}`);
 }
 
-app.get('/', async (request, reply) => {
-  return { ok: true };
-});
-
-app.listen({ port: 3000 }).then(() => {
-  console.log('Server is running');
+bootstrap().catch((error) => {
+  console.error(error);
+  process.exit(1);
 });

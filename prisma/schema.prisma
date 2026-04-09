@@ -6,80 +6,97 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  bookings            Booking[]
+  passwordResetTokens PasswordResetToken[]
+}
+
 model Barbershop {
-  id String @id @default(uuid())
-
-  name String
-  slug String @unique
-
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
   phoneOwner String?
+  createdAt  DateTime @default(now())
 
   barbers  Barber[]
   services Service[]
   bookings Booking[]
-
-  createdAt DateTime @default(now())
-}
-
-model User {
-  id String @id @default(uuid())
-
-  name     String
-  email    String @unique
-  password String
-  phone    String @unique
-
-  bookings Booking[]
-
-  createdAt DateTime @default(now())
 }
 
 model Barber {
-  id String @id @default(uuid())
-
-  name     String
-  email    String
-  password String
-  phone    String
-
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  phone        String   @unique
+  password     String
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+  createdAt    DateTime @default(now())
 
-  createdAt DateTime  @default(now())
-  bookings  Booking[]
+  barbershop          Barbershop           @relation(fields: [barbershopId], references: [id])
+  bookings            Booking[]
+  services            BarberService[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Service {
-  id String @id @default(uuid())
-
-  name     String
-  price    Float
-  duration Int
-
+  id           String   @id @default(uuid())
+  name         String
+  price        Float
+  duration     Int
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+  createdAt    DateTime @default(now())
 
-  createdAt DateTime  @default(now())
-  bookings  Booking[]
+  barbershop Barbershop      @relation(fields: [barbershopId], references: [id])
+  bookings   Booking[]
+  barbers    BarberService[]
+
+  @@unique([barbershopId, name])
+}
+
+model BarberService {
+  barberId  String
+  serviceId String
+
+  barber  Barber  @relation(fields: [barberId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@id([barberId, serviceId])
 }
 
 model Booking {
-  id String @id @default(uuid())
-
-  day  String
-  time String
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  barberId String
-  barber   Barber @relation(fields: [barberId], references: [id])
-
-  serviceId String
-  service   Service @relation(fields: [serviceId], references: [id])
-
+  id           String   @id @default(uuid())
+  day          String
+  time         String
+  userId       String
+  barberId     String
+  serviceId    String
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+  createdAt    DateTime @default(now())
 
-  createdAt DateTime @default(now())
+  user       User       @relation(fields: [userId], references: [id])
+  barber     Barber     @relation(fields: [barberId], references: [id])
+  service    Service    @relation(fields: [serviceId], references: [id])
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@unique([barberId, day, time])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String?
+  barberId  String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  barber Barber? @relation(fields: [barberId], references: [id])
 }

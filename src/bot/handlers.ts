@@ -1,34 +1,38 @@
-import { bookingService } from "../services/booking-service.js";
+import { AppError } from "../errors/app-error.js";
+import { conversationStore } from "./conversation-states.js";
+import { whatsappBookingService } from "../services/whatsapp-booking-service.js";
 
 export async function handleIncomingText(
   phone: string,
   body: string,
   barbershopId: string
 ) {
-  const text = body.toLocaleLowerCase().trim();
-  if (text === 'menu') {
-    return 'Servicos disponíveis:\n1. Corte\n2. Barba\n3. Corte + Barba\n\nResponda com o número do serviço para agendar.';
-  }
-  if (text === '1') {
-    return 'Escolha um dia para o corte (formato YYYY-MM-DD):';
-  }
+  const text = body.trim().toLowerCase();
+  const state = conversationStore.get(phone);
 
-  if (text.includes('-')) {
-    return 'Escolha um horário para o corte (formato HH:MM):';
-  }
-  if (text.includes(':')) {
-    const booking = await bookingService.create({
-      userId: 'id-do-usuario',
-      barberId: 'id-do-barbeiro',
-      barbershopId,
-      serviceId: 'corte',
-      day: '2024-07-01',
-      time: text, 
-    });
-    return `Agendamento confirmado para 
-    ${booking.day} às 
-    ${booking.time}. Obrigado!`;
-  }
+ try {
+    if (text === 'oi' || text === 'menu') {
+      return await whatsappBookingService.startConversation(phone, barbershopId);
+    }
 
-  return 'Digite "menu" para ver os serviços disponíveis.';
+    if (state?.step === 'awaiting_service') {
+      return await whatsappBookingService.handleServiceSelection(phone, text, state);
+    }
+
+    if (state?.step === 'awaiting_day') {
+      return await whatsappBookingService.handleDaySelection(phone, text, state);
+    }
+
+    if (state?.step === 'awaiting_time') {
+      return await whatsappBookingService.handleTimeSelection(phone, text, state);
+    }
+
+    return 'Digite "oi" ou "menu" para iniciar seu agendamento.';
+  } catch (error) {
+    if (error instanceof AppError) {
+      return error.message;
+    }
+
+    return 'Ocorreu um erro ao processar sua mensagem.';
+  }
 }

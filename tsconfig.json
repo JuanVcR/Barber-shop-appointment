@@ -4,9 +4,6 @@
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
-
-    "include": ["src/**/*.ts"],
-    "exclude": ["node_modules",], 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
