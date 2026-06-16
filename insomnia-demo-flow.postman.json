@@ -1,0 +1,252 @@
+{
+  "info": {
+    "_postman_id": "chatboot-demo-flow",
+    "name": "Projeto ChatBoot - Demo Flow",
+    "description": "Fluxo ordenado para testar a API no Insomnia. Importe como Postman Collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "root_url", "value": "http://localhost:3333" },
+    { "key": "api_url", "value": "http://localhost:3333/api" },
+    { "key": "password", "value": "123456" },
+    { "key": "super_email", "value": "super@admin.com" },
+    { "key": "admin_email", "value": "admin@barbearia.com" },
+    { "key": "barber_email", "value": "carlos@barber.com" },
+    { "key": "client_email", "value": "cliente@teste.com" },
+    { "key": "barbershop_slug", "value": "barbearia-alpha" },
+    { "key": "barbershop_id", "value": "9386db6d-6849-4be0-ad91-873f1fa2f69b" },
+    { "key": "barber_id", "value": "83ac1734-2f73-4f7f-b202-c230585f0830" },
+    { "key": "service_id", "value": "47dcd00c-5bc6-4b81-96e1-46e5b28234ee" },
+    { "key": "booking_day", "value": "2026-05-25" },
+    { "key": "booking_start_time", "value": "09:00" },
+    { "key": "super_token", "value": "COLE_TOKEN_SUPER_AQUI" },
+    { "key": "admin_token", "value": "COLE_TOKEN_ADMIN_AQUI" },
+    { "key": "barber_token", "value": "COLE_TOKEN_BARBEIRO_AQUI" },
+    { "key": "client_token", "value": "COLE_TOKEN_CLIENTE_AQUI" },
+    { "key": "booking_id", "value": "COLE_BOOKING_ID_AQUI" }
+  ],
+  "item": [
+    {
+      "name": "00 - Check",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": "{{root_url}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Login",
+      "item": [
+        {
+          "name": "Login Super Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{super_email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{api_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Login Admin Barbearia",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{api_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Login Barbeiro",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{barber_email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{api_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Login Cliente",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{client_email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{api_url}}/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Consulta Publica",
+      "item": [
+        {
+          "name": "Listar Barbearias",
+          "request": {
+            "method": "GET",
+            "url": "{{api_url}}/barbershops"
+          }
+        },
+        {
+          "name": "Buscar Barbearia por Slug",
+          "request": {
+            "method": "GET",
+            "url": "{{api_url}}/barbershops/{{barbershop_slug}}"
+          }
+        },
+        {
+          "name": "Listar Servicos da Barbearia",
+          "request": {
+            "method": "GET",
+            "url": "{{api_url}}/barbershops/{{barbershop_id}}/services"
+          }
+        },
+        {
+          "name": "Consultar Horarios Disponiveis",
+          "request": {
+            "method": "GET",
+            "url": "{{api_url}}/availability?barberId={{barber_id}}&serviceId={{service_id}}&day={{booking_day}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Cliente Agenda",
+      "item": [
+        {
+          "name": "Perfil do Cliente",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+            "url": "{{api_url}}/clients/me"
+          }
+        },
+        {
+          "name": "Criar Agendamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{client_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"barbershopId\": \"{{barbershop_id}}\",\n  \"barberId\": \"{{barber_id}}\",\n  \"serviceId\": \"{{service_id}}\",\n  \"day\": \"{{booking_day}}\",\n  \"startTime\": \"{{booking_start_time}}\"\n}"
+            },
+            "url": "{{api_url}}/bookings"
+          }
+        },
+        {
+          "name": "Meus Agendamentos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+            "url": "{{api_url}}/bookings/me"
+          }
+        },
+        {
+          "name": "Detalhe do Agendamento",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+            "url": "{{api_url}}/bookings/{{booking_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Admin Gerencia",
+      "item": [
+        {
+          "name": "Agenda da Barbearia por Dia",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": "{{api_url}}/bookings/{{barbershop_id}}/{{booking_day}}"
+          }
+        },
+        {
+          "name": "Registrar Pagamento",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"PIX\",\n  \"amountPaid\": 35\n}"
+            },
+            "url": "{{api_url}}/bookings/{{booking_id}}/payment"
+          }
+        },
+        {
+          "name": "Marcar como Concluido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+            },
+            "url": "{{api_url}}/bookings/{{booking_id}}/status"
+          }
+        },
+        {
+          "name": "Relatorio da Barbearia",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": "{{api_url}}/admin/barbershops/{{barbershop_id}}/stats"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Barbeiro",
+      "item": [
+        {
+          "name": "Perfil do Barbeiro",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{barber_token}}" }],
+            "url": "{{api_url}}/barbers/me"
+          }
+        },
+        {
+          "name": "Agenda do Barbeiro",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{barber_token}}" }],
+            "url": "{{api_url}}/bookings/me?day={{booking_day}}"
+          }
+        },
+        {
+          "name": "Dashboard do Barbeiro",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{barber_token}}" }],
+            "url": "{{api_url}}/barbers/me/dashboard"
+          }
+        }
+      ]
+    }
+  ]
+}

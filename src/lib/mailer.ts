@@ -10,3 +10,7 @@ export const mailer = nodemailer.createTransport({
     pass: env.SMTP_PASS,
   },
 });
+
+export function verifyMailer() {
+  return mailer.verify();
+}

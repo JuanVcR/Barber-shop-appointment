@@ -6,43 +6,201 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
+enum AccountRole {
+  SUPER_ADMIN
+  BARBERSHOP_ADMIN
+  BARBER
+  CLIENT
+}
+
+enum PaymentMethod {
+  DEBIT
+  CREDIT
+  PIX
+  CASH
+}
+
+enum BarbershopPlan {
+  FREE
+  BASIC
+  PRO
+}
+
+enum BookingStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+model Account {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  password     String
+  refreshToken String?
+  role         AccountRole
+  createdAt    DateTime    @default(now())
+  deletedAt    DateTime?
+
+  client              Client?
+  barber              Barber?
+  barbershopAdmins    BarbershopAdmin[]
+  barberInvites       BarberInvite[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]
+}
+
+model AuditLog {
   id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  phone     String   @unique
-  password  String
+  accountId String?
+  method    String
+  path      String
+  status    Int
+  ip        String?
   createdAt DateTime @default(now())
 
-  bookings            Booking[]
-  passwordResetTokens PasswordResetToken[]
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@index([createdAt])
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  accountId String?  @unique
+  name      String
+  phone     String
+  email     String?
+  cpf       String?
+  createdAt DateTime @default(now())
+
+  account     Account?           @relation(fields: [accountId], references: [id])
+  bookings    Booking[]
+  barbershops ClientBarbershop[]
+
+  @@index([phone])
+  @@index([cpf])
 }
 
 model Barbershop {
-  id         String   @id @default(uuid())
-  name       String
-  slug       String   @unique
-  phoneOwner String?
-  createdAt  DateTime @default(now())
+  id              String         @id @default(uuid())
+  name            String
+  slug            String         @unique
+  cnpj            String?        @unique
+  address         String?
+  latitude        Float?
+  longitude       Float?
+  phoneOwner      String?
+  logoUrl         String?
+  coverUrl        String?
+  plan            BarbershopPlan @default(FREE)
+  setupCompleted  Boolean        @default(false)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime       @default(now())
 
-  barbers  Barber[]
-  services Service[]
-  bookings Booking[]
+  admins        BarbershopAdmin[]
+  clients       ClientBarbershop[]
+  barbers       Barber[]
+  barberInvites BarberInvite[]
+  services      Service[]
+  bookings      Booking[]
+  workingHours  BarbershopWorkingHour[]
+}
+
+model BarbershopAdmin {
+  id           String   @id @default(uuid())
+  accountId    String
+  barbershopId String
+  createdAt    DateTime @default(now())
+
+  account    Account    @relation(fields: [accountId], references: [id])
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@unique([accountId, barbershopId])
+}
+
+model ClientBarbershop {
+  clientId     String
+  barbershopId String
+  createdAt    DateTime @default(now())
+
+  client     Client     @relation(fields: [clientId], references: [id])
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@id([clientId, barbershopId])
+}
+
+model BarbershopWorkingHour {
+  id           String @id @default(uuid())
+  barbershopId String
+  weekDay      Int
+  startTime    String
+  endTime      String
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@unique([barbershopId, weekDay])
 }
 
 model Barber {
   id           String   @id @default(uuid())
+  accountId    String   @unique
   name         String
-  email        String   @unique
   phone        String   @unique
-  password     String
   barbershopId String
   createdAt    DateTime @default(now())
 
-  barbershop          Barbershop           @relation(fields: [barbershopId], references: [id])
-  bookings            Booking[]
-  services            BarberService[]
-  passwordResetTokens PasswordResetToken[]
+  account      Account              @relation(fields: [accountId], references: [id])
+  barbershop   Barbershop           @relation(fields: [barbershopId], references: [id])
+  bookings     Booking[]
+  services     BarberService[]
+  availability BarberAvailability[]
+  barberBlocks BarberBlock[]
+}
+
+model BarberInvite {
+  id                 String    @id @default(uuid())
+  token              String    @unique
+  email              String
+  name               String
+  phone              String
+  barbershopId       String
+  invitedByAccountId String
+  serviceIds         String[]
+  expiresAt          DateTime
+  acceptedAt         DateTime?
+  createdAt          DateTime  @default(now())
+
+  barbershop       Barbershop @relation(fields: [barbershopId], references: [id])
+  invitedByAccount Account    @relation(fields: [invitedByAccountId], references: [id])
+
+  @@index([barbershopId])
+  @@index([email])
+}
+
+model BarberAvailability {
+  id        String @id @default(uuid())
+  barberId  String
+  weekDay   Int
+  startTime String
+  endTime   String
+
+  barber Barber @relation(fields: [barberId], references: [id])
+
+  @@unique([barberId, weekDay])
+}
+
+model BarberBlock {
+  id        String   @id @default(uuid())
+  barberId  String
+  day       String
+  startTime String?
+  endTime   String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  barber Barber @relation(fields: [barberId], references: [id])
+
+  @@index([barberId, day])
 }
 
 model Service {
@@ -53,8 +211,8 @@ model Service {
   barbershopId String
   createdAt    DateTime @default(now())
 
-  barbershop Barbershop      @relation(fields: [barbershopId], references: [id])
-  bookings   Booking[]
+  barbershop Barbershop       @relation(fields: [barbershopId], references: [id])
+  bookings   BookingService[]
   barbers    BarberService[]
 
   @@unique([barbershopId, name])
@@ -71,32 +229,47 @@ model BarberService {
 }
 
 model Booking {
-  id           String   @id @default(uuid())
-  day          String
-  time         String
-  userId       String
-  barberId     String
-  serviceId    String
-  barbershopId String
-  createdAt    DateTime @default(now())
+  id                 String         @id @default(uuid())
+  day                String
+  startTime          String
+  endTime            String
+  totalDuration      Int
+  clientId           String
+  barberId           String
+  barbershopId       String
+  status             BookingStatus  @default(SCHEDULED)
+  cancellationReason String?
+  cancelledAt        DateTime?
+  completedAt        DateTime?
+  paymentMethod      PaymentMethod?
+  amountPaid         Float?
+  createdAt          DateTime       @default(now())
 
-  user       User       @relation(fields: [userId], references: [id])
-  barber     Barber     @relation(fields: [barberId], references: [id])
-  service    Service    @relation(fields: [serviceId], references: [id])
-  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+  client     Client           @relation(fields: [clientId], references: [id])
+  barber     Barber           @relation(fields: [barberId], references: [id])
+  barbershop Barbershop       @relation(fields: [barbershopId], references: [id])
+  services   BookingService[]
 
-  @@unique([barberId, day, time])
+  @@index([barberId, day])
 }
 
 model PasswordResetToken {
   id        String    @id @default(uuid())
   token     String    @unique
-  userId    String?
-  barberId  String?
+  accountId String
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 
-  user   User?   @relation(fields: [userId], references: [id])
-  barber Barber? @relation(fields: [barberId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+}
+
+model BookingService {
+  bookingId String
+  serviceId String
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@id([bookingId, serviceId])
 }

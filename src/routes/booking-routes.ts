@@ -9,13 +9,55 @@ export async function bookingRoutes(app: FastifyInstance) {
     bookingController.create
   );
 
+  app.post(
+    '/bookings/guest',
+    bookingController.createGuest
+  );
+
+  app.get(
+    '/bookings/me',
+    { preHandler: authMiddleware },
+    bookingController.listMine
+  );
+
   app.get(
     '/bookings/:barbershopId/:day',
+    { preHandler: authMiddleware },
     bookingController.listByDay
   );
 
   app.get(
     '/availability',
     bookingController.listAvailableTimes
+  );
+
+  app.patch(
+    '/bookings/:bookingId/payment',
+    { preHandler: authMiddleware },
+    bookingController.registerPayment
+  );
+
+  app.patch(
+    '/bookings/:bookingId/status',
+    { preHandler: authMiddleware },
+    bookingController.updateStatus
+  );
+
+  app.patch(
+    '/bookings/:bookingId/reschedule',
+    { preHandler: authMiddleware },
+    bookingController.reschedule
+  );
+
+  app.get(
+    '/bookings/:bookingId',
+    { preHandler: authMiddleware },
+    bookingController.getById
+  );
+
+  app.delete(
+    '/bookings/:bookingId',
+    { preHandler: authMiddleware },
+    bookingController.cancel
   );
 }

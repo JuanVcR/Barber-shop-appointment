@@ -35,4 +35,3 @@ async function main() {
         },
     });
 }
-//# sourceMappingURL=seed.js.map

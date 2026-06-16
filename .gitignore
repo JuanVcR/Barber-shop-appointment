@@ -20,6 +20,8 @@ lerna-debug.log*
 .DS_Store
 Thumbs.db
 coverage/
+backups/
+uploads/
 .cache/
 tmp/.env
 node_modules/

@@ -1,0 +1,5 @@
+# Backup diario as 02:00
+0 2 * * * cd /caminho/Projeto-ChatBoot && /usr/bin/npm run db:backup >> backups/cron.log 2>&1
+
+# Lembretes diarios as 09:00
+0 9 * * * cd /caminho/Projeto-ChatBoot && /usr/bin/npm run notifications:reminders >> reminders.log 2>&1

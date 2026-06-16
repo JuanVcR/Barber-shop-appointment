@@ -1,0 +1,9 @@
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET ??= 'test-secret';
+process.env.DATABASE_URL ??= 'postgresql://test:test@localhost:5432/test';
+process.env.APP_URL ??= 'http://localhost:3333';
+process.env.SMTP_HOST ??= 'smtp.test.local';
+process.env.SMTP_PORT ??= '587';
+process.env.SMTP_USER ??= 'test-user';
+process.env.SMTP_PASS ??= 'test-pass';
+process.env.SMTP_FROM ??= 'test@example.com';

@@ -4,6 +4,8 @@ import { env } from '../config/env.js';
 
 type TokenPayload = {
   sub: string;
+  role: 'SUPER_ADMIN' | 'BARBERSHOP_ADMIN' | 'BARBER' | 'CLIENT';
+  type: 'access';
 };
 
 export async function authMiddleware(req: FastifyRequest, reply: FastifyReply) {
@@ -21,7 +23,17 @@ export async function authMiddleware(req: FastifyRequest, reply: FastifyReply) {
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
-    req.user = { id: payload.sub };
+
+    const validRoles = ['SUPER_ADMIN', 'BARBERSHOP_ADMIN', 'BARBER', 'CLIENT'];
+    if (
+      payload.type !== 'access' ||
+      typeof payload.sub !== 'string' ||
+      !validRoles.includes(payload.role)
+    ) {
+      throw new Error('Invalid access token');
+    }
+
+    req.user = { id: payload.sub, role: payload.role };
   } catch {
     return reply.status(401).send({ message: 'Token invalido ou expirado' });
   }
