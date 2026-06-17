@@ -100,6 +100,8 @@ const updateBarbershopSchema = z.object({
   phoneOwner: z.string().min(10).nullable().optional(),
   plan: z.enum(['FREE', 'BASIC', 'PRO']).optional(),
   setupCompleted: z.boolean().optional(),
+  logoUrl: z.string().url().nullable().optional(),
+  coverUrl: z.string().url().nullable().optional(),
 }).refine((data) => Object.keys(data).length > 0, {
   message: 'Informe ao menos um campo para atualizar',
 });

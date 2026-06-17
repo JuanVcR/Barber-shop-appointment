@@ -39,6 +39,24 @@ export async function adminRoutes(app: FastifyInstance) {
     adminController.listBarbers
   );
 
+  app.post(
+    '/admin/barbershops/:barbershopId/me-as-barber',
+    { preHandler: authMiddleware },
+    adminController.createMeAsBarber
+  );
+
+  app.get(
+    '/admin/barbershops/:barbershopId/barbers/:barberId/day',
+    { preHandler: authMiddleware },
+    adminController.getBarberDay
+  );
+
+  app.get(
+    '/admin/barbershops/:barbershopId/barbers/:barberId/history',
+    { preHandler: authMiddleware },
+    adminController.getBarberHistory
+  );
+
   app.delete(
     '/admin/barbershops/:barbershopId/admins/:adminId',
     { preHandler: authMiddleware },

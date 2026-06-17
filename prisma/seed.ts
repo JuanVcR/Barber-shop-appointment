@@ -3,14 +3,15 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../src/database/prisma.js';
 
 async function main() {
-  const clientPassword = await bcrypt.hash('123456', 10);
-  const barberPassword = await bcrypt.hash('123456', 10);
-  const adminPassword = await bcrypt.hash('123456', 10);
-  const superAdminPassword = await bcrypt.hash('123456', 10);
+  const defaultPassword = '12345678';
+  const clientPassword = await bcrypt.hash(defaultPassword, 10);
+  const barberPassword = await bcrypt.hash(defaultPassword, 10);
+  const adminPassword = await bcrypt.hash(defaultPassword, 10);
+  const superAdminPassword = await bcrypt.hash(defaultPassword, 10);
 
   await prisma.account.upsert({
     where: { email: 'super@admin.com' },
-    update: {},
+    update: { password: superAdminPassword },
     create: {
       email: 'super@admin.com',
       password: superAdminPassword,
@@ -20,7 +21,7 @@ async function main() {
 
   const adminAccount = await prisma.account.upsert({
     where: { email: 'admin@barbearia.com' },
-    update: {},
+    update: { password: adminPassword },
     create: {
       email: 'admin@barbearia.com',
       password: adminPassword,
@@ -72,7 +73,7 @@ async function main() {
 
   const clientAccount = await prisma.account.upsert({
     where: { email: 'cliente@teste.com' },
-    update: {},
+    update: { password: clientPassword },
     create: {
       email: 'cliente@teste.com',
       password: clientPassword,
@@ -93,7 +94,7 @@ async function main() {
 
   const barberAccount = await prisma.account.upsert({
     where: { email: 'carlos@barber.com' },
-    update: {},
+    update: { password: barberPassword },
     create: {
       email: 'carlos@barber.com',
       password: barberPassword,

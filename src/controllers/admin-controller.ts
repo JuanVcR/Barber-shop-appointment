@@ -6,9 +6,29 @@ import { barberRepository } from '../repositories/barber-repository.js';
 import { barbershopAdminRepository } from '../repositories/barbershop-admin-repository.js';
 import { barbershopRepository } from '../repositories/barbershop-repository.js';
 import { serviceRepository } from '../repositories/service-repository.js';
+import { bookingRepository } from '../repositories/booking-repository.js';
 
 const updateBarberServicesSchema = z.object({
   serviceIds: z.array(z.string().uuid()),
+});
+
+const createMeAsBarberSchema = z.object({
+  name: z.string().min(2).optional(),
+  phone: z.string().min(11),
+  serviceIds: z.array(z.string().uuid()).optional(),
+});
+
+const barbershopParamsSchema = z.object({
+  barbershopId: z.string().uuid(),
+});
+
+const barberParamsSchema = z.object({
+  barbershopId: z.string().uuid(),
+  barberId: z.string().uuid(),
+});
+
+const barberDayQuerySchema = z.object({
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
 export const adminController = {
@@ -409,6 +429,140 @@ export const adminController = {
     })));
   },
 
+  async listServices(
+    req: FastifyRequest<{ Params: { barbershopId: string } }>,
+    reply: FastifyReply
+  ) {
+    const { barbershopId } = barbershopParamsSchema.parse(req.params);
+    const admin = await barbershopAdminRepository.findByAccountAndBarbershop(
+      req.user.id,
+      barbershopId
+    );
+
+    if (!admin && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Acesso negado', 403);
+    }
+
+    const services = await serviceRepository.findByBarbershopId(barbershopId);
+
+    return reply.send(services);
+  },
+
+  async createMeAsBarber(
+    req: FastifyRequest<{ Params: { barbershopId: string } }>,
+    reply: FastifyReply
+  ) {
+    const { barbershopId } = barbershopParamsSchema.parse(req.params);
+    const body = createMeAsBarberSchema.parse(req.body);
+
+    if (req.user.role !== 'SUPER_ADMIN' && req.user.role !== 'BARBERSHOP_ADMIN') {
+      throw new AppError('Acesso negado', 403);
+    }
+
+    const admin = await barbershopAdminRepository.findByAccountAndBarbershop(
+      req.user.id,
+      barbershopId
+    );
+
+    if (!admin && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Acesso negado', 403);
+    }
+
+    const account = await prisma.account.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, email: true },
+    });
+
+    if (!account) {
+      throw new AppError('Conta nao encontrada', 404);
+    }
+
+    const existingBarber = await barberRepository.findByAccountId(req.user.id);
+
+    if (existingBarber) {
+      throw new AppError('Esta conta ja possui perfil de barbeiro', 400);
+    }
+
+    const existingPhone = await prisma.barber.findUnique({
+      where: { phone: body.phone },
+    });
+
+    if (existingPhone) {
+      throw new AppError('Telefone ja cadastrado para outro barbeiro', 400);
+    }
+
+    if (body.serviceIds?.length) {
+      const services = await serviceRepository.findManyByIds(body.serviceIds);
+
+      if (
+        services.length !== body.serviceIds.length ||
+        services.some((service) => service.barbershopId !== barbershopId)
+      ) {
+        throw new AppError('Servico nao pertence a esta barbearia', 400);
+      }
+    }
+
+    const barber = await barberRepository.create({
+      accountId: account.id,
+      name: body.name ?? account.email.split('@')[0],
+      phone: body.phone,
+      barbershopId,
+      serviceIds: body.serviceIds,
+    });
+
+    return reply.status(201).send(barber);
+  },
+
+  async getBarberDay(req: FastifyRequest, reply: FastifyReply) {
+    const { barbershopId, barberId } = barberParamsSchema.parse(req.params);
+    const { day } = barberDayQuerySchema.parse(req.query);
+
+    const admin = await barbershopAdminRepository.findByAccountAndBarbershop(req.user.id, barbershopId);
+
+    if (!admin && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Acesso negado', 403);
+    }
+
+    const barber = await barberRepository.findById(barberId);
+
+    if (!barber || barber.barbershopId !== barbershopId) {
+      throw new AppError('Barbeiro nao encontrado', 404);
+    }
+
+    const bookings = await bookingRepository.findByBarberAndDay(
+      barbershopId,
+      barberId,
+      day
+    );
+
+    return reply.send(bookings);
+  },
+
+  async getBarberHistory(req: FastifyRequest, reply: FastifyReply) {
+    const { barbershopId, barberId } = barberParamsSchema.parse(req.params);
+
+    const admin = await barbershopAdminRepository.findByAccountAndBarbershop(
+      req.user.id,
+      barbershopId
+    );
+
+    if (!admin && req.user.role !== 'SUPER_ADMIN') {
+      throw new AppError('Acesso negado', 403);
+    }
+
+    const barber = await barberRepository.findById(barberId);
+
+    if (!barber || barber.barbershopId !== barbershopId) {
+      throw new AppError('Barbeiro nao encontrado', 404);
+    }
+
+    const bookings = await bookingRepository.findHistoryByBarberInBarbershop({
+      barbershopId,
+      barberId,
+    });
+
+    return reply.send(bookings);
+  },
   async updateBarberServices(
     req: FastifyRequest<{
       Params: { barbershopId: string; barberId: string };

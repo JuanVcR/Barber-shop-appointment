@@ -156,6 +156,42 @@ export const bookingRepository = {
     });
   },
 
+  findByBarberAndDay(barbershopId: string, barberId: string, day: string) {
+    return prisma.booking.findMany({
+      where: {
+        barbershopId,
+        barberId,
+        day,
+      },
+      include: {
+        client: true,
+        barber: true,
+        barbershop: true,
+        services: { include: { service: true } },
+      },
+      orderBy: { startTime: 'asc' },
+    });
+  },
+
+  findHistoryByBarberInBarbershop(data: {
+    barbershopId: string;
+    barberId: string;
+  }) {
+    return prisma.booking.findMany({
+      where: {
+        barbershopId: data.barbershopId,
+        barberId: data.barberId,
+      },
+      include: {
+        client: true,
+        barber: true,
+        barbershop: true,
+        services: { include: { service: true } },
+      },
+      orderBy: [{ day: 'desc' }, { startTime: 'desc' }],
+    });
+  },
+
   findHistoryByBarber(barberId: string) {
     return prisma.booking.findMany({
       where: { barberId },
