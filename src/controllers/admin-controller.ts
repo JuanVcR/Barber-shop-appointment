@@ -144,7 +144,19 @@ export const adminController = {
     const weekStart = monday.toISOString().split('T')[0];
     const weekEnd = sunday.toISOString().split('T')[0];
 
-    const [barbershop, totalBookings, todayBookings, revenue, todayRevenue, barbers, services, appointmentsToday, weekBookings] =
+    const [
+      barbershop,
+      totalBookings,
+      todayBookings,
+      revenue,
+      todayRevenue,
+      barbers,
+      services,
+      appointmentsToday,
+      weekBookings,
+      upcomingWeekAppointments,
+      barbershopClients,
+    ] =
       await Promise.all([
         prisma.barbershop.findUnique({
           where: { id: barbershopId },
@@ -198,6 +210,44 @@ export const adminController = {
           },
           select: { day: true },
         }),
+        prisma.booking.findMany({
+          where: {
+            barbershopId,
+            day: { gte: today, lte: weekEnd },
+            status: 'SCHEDULED',
+          },
+          include: {
+            client: { select: { id: true, name: true, phone: true } },
+            barber: { select: { id: true, name: true } },
+            services: {
+              include: {
+                service: {
+                  select: { id: true, name: true, price: true, duration: true },
+                },
+              },
+            },
+            barbershop: { select: { id: true, name: true } },
+          },
+          orderBy: [{ day: 'asc' }, { startTime: 'asc' }],
+          take: 6,
+        }),
+        prisma.clientBarbershop.findMany({
+          where: { barbershopId },
+          select: {
+            client: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+                bookings: {
+                  where: { barbershopId, status: 'COMPLETED' },
+                  select: { day: true },
+                  orderBy: { day: 'desc' },
+                },
+              },
+            },
+          },
+        }),
       ]);
 
     if (!barbershop) {
@@ -227,6 +277,20 @@ export const adminController = {
       })),
       services,
       appointmentsToday,
+      upcomingWeekAppointments,
+      activeClients: barbershopClients
+        .map(({ client }) => ({
+          id: client.id,
+          name: client.name,
+          phone: client.phone,
+          visits: client.bookings.length,
+          lastVisit: client.bookings[0]?.day ?? null,
+        }))
+        .sort((left, right) => {
+          if (right.visits !== left.visits) return right.visits - left.visits;
+          return (right.lastVisit ?? '').localeCompare(left.lastVisit ?? '');
+        })
+        .slice(0, 5),
     });
   },
 
