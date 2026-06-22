@@ -214,7 +214,6 @@ export const adminController = {
           where: {
             barbershopId,
             day: { gte: today, lte: weekEnd },
-            status: 'SCHEDULED',
           },
           include: {
             client: { select: { id: true, name: true, phone: true } },
