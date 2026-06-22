@@ -156,6 +156,38 @@ export const bookingRepository = {
     });
   },
 
+  findByBarberRange(barberId: string, startDay: string, endDay: string) {
+    return prisma.booking.findMany({
+      where: {
+        barberId,
+        day: { gte: startDay, lte: endDay },
+      },
+      include: {
+        client: true,
+        barber: true,
+        barbershop: true,
+        services: { include: { service: true } },
+      },
+      orderBy: [{ day: 'asc' }, { startTime: 'asc' }],
+    });
+  },
+
+  findByBarbershopRange(barbershopId: string, startDay: string, endDay: string) {
+    return prisma.booking.findMany({
+      where: {
+        barbershopId,
+        day: { gte: startDay, lte: endDay },
+      },
+      include: {
+        client: true,
+        barber: true,
+        barbershop: true,
+        services: { include: { service: true } },
+      },
+      orderBy: [{ day: 'asc' }, { startTime: 'asc' }],
+    });
+  },
+
   findByBarberAndDay(barbershopId: string, barberId: string, day: string) {
     return prisma.booking.findMany({
       where: {
@@ -278,6 +310,40 @@ updateSchedule(data: {
     },
   });
 },
+
+  replaceServices(data: {
+    bookingId: string;
+    serviceIds: string[];
+    totalDuration: number;
+    endTime: string;
+  }) {
+    return prisma.$transaction(async (tx) => {
+      await tx.bookingService.deleteMany({
+        where: { bookingId: data.bookingId },
+      });
+
+      await tx.bookingService.createMany({
+        data: data.serviceIds.map((serviceId) => ({
+          bookingId: data.bookingId,
+          serviceId,
+        })),
+      });
+
+      return tx.booking.update({
+        where: { id: data.bookingId },
+        data: {
+          totalDuration: data.totalDuration,
+          endTime: data.endTime,
+        },
+        include: {
+          client: true,
+          barber: true,
+          barbershop: true,
+          services: { include: { service: true } },
+        },
+      });
+    });
+  },
 
   findOverlapping(barberId: string, day: string, start: string, end: string) {
     return prisma.booking.findFirst({

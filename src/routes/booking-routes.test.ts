@@ -11,11 +11,17 @@ vi.mock('../controllers/booking-controller.js', () => ({
     createGuest: async (_req: any, reply: any) => {
       return reply.status(201).send({ id: 'booking-1' });
     },
+    createQuick: async (_req: any, reply: any) => {
+      return reply.status(201).send({ id: 'booking-quick' });
+    },
     listByDay: async (_req: any, reply: any) => {
       return reply.send([{ id: 'booking-1' }]);
     },
     listMine: async (_req: any, reply: any) => {
       return reply.send([{ id: 'booking-1' }]);
+    },
+    listWeek: async (_req: any, reply: any) => {
+      return reply.send({ startDay: '2026-04-06', endDay: '2026-04-12', bookings: [] });
     },
     listAvailableTimes: async (_req: any, reply: any) => {
       return reply.send(['10:00', '11:00']);
@@ -25,6 +31,9 @@ vi.mock('../controllers/booking-controller.js', () => ({
     },
     updateStatus: async (_req: any, reply: any) => {
       return reply.send({ id: 'booking-1', status: 'COMPLETED' });
+    },
+    updateServices: async (_req: any, reply: any) => {
+      return reply.send({ id: 'booking-1', services: [] });
     },
     reschedule: async (_req: any, reply: any) => {
       return reply.send({ id: 'booking-1', day: '2026-04-11' });
@@ -43,6 +52,7 @@ vi.mock('../controllers/auth-controller.js', () => ({
     register: async (_req: any, reply: any) => reply.status(201).send({ ok: true }),
     login: async (_req: any, reply: any) => reply.send({ token: 'abc' }),
     changePassword: async (_req: any, reply: any) => reply.send({ ok: true }),
+    forgotPassword: async (_req: any, reply: any) => reply.send({ ok: true }),
     forgotUserPassword: async (_req: any, reply: any) => reply.send({ ok: true }),
     forgotBarberPassword: async (_req: any, reply: any) => reply.send({ ok: true }),
     resetPassword: async (_req: any, reply: any) => reply.send({ ok: true }),
@@ -124,6 +134,21 @@ describe('booking routes', () => {
 
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body)).toEqual(['10:00', '11:00']);
+    await app.close();
+  });
+
+  it('should expose weekly agenda', async () => {
+    const { buildApp } = await import('../app.js');
+    const app = await buildApp();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/bookings/week?startDay=2026-04-06',
+      headers: { authorization: 'Bearer token-123' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).startDay).toBe('2026-04-06');
     await app.close();
   });
 });

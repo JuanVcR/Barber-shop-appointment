@@ -122,6 +122,14 @@ export const authController = {
     return reply.send(result);
   },
 
+  async forgotPassword(req: FastifyRequest, reply: FastifyReply) {
+    const body = forgotPasswordSchema.parse(req.body);
+
+    const result = await authService.requestPasswordReset(body.email);
+
+    return reply.send(result);
+  },
+
   async forgotBarberPassword(req: FastifyRequest, reply: FastifyReply) {
     const body = forgotPasswordSchema.parse(req.body);
 

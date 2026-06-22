@@ -30,6 +30,8 @@ const createGuestBookingSchema = createBookingSchema.extend({
   }),
 });
 
+const createQuickBookingSchema = createGuestBookingSchema;
+
 const listByDayParamsSchema = z.object({
   barbershopId: z.string().min(1),
   day: z.string().min(1),
@@ -61,6 +63,11 @@ const myBookingsQuerySchema = z.object({
   day: z.string().min(1).optional(),
 });
 
+const weekBookingsQuerySchema = z.object({
+  startDay: z.string().min(1),
+  barbershopId: z.string().min(1).optional(),
+});
+
 const statusParamsSchema = z.object({
   bookingId: z.string().min(1),
 });
@@ -77,6 +84,10 @@ const rescheduleBodySchema = z.object({
 
 const cancelBodySchema = z.object({
   cancellationReason: z.string().optional(),
+});
+
+const updateServicesBodySchema = z.object({
+  serviceIds: z.array(z.string().min(1)).min(1),
 });
 
 export const bookingController = {
@@ -99,6 +110,22 @@ export const bookingController = {
     const body = createGuestBookingSchema.parse(req.body);
 
     const booking = await bookingService.createGuest({
+      client: body.client,
+      barberId: body.barberId,
+      serviceIds: body.serviceIds ?? [body.serviceId!],
+      barbershopId: body.barbershopId,
+      day: body.day,
+      startTime: body.startTime ?? body.time!,
+    });
+
+    return reply.status(201).send(booking);
+  },
+
+  async createQuick(req: FastifyRequest, reply: FastifyReply) {
+    const body = createQuickBookingSchema.parse(req.body);
+
+    const booking = await bookingService.createQuick({
+      ...getRequester(req),
       client: body.client,
       barberId: body.barberId,
       serviceIds: body.serviceIds ?? [body.serviceId!],
@@ -146,6 +173,17 @@ export const bookingController = {
     return reply.send(bookings);
   },
 
+  async listWeek(req: FastifyRequest, reply: FastifyReply) {
+    const query = weekBookingsQuerySchema.parse(req.query);
+
+    const result = await bookingService.listWeekForRequester({
+      ...getRequester(req),
+      ...query,
+    });
+
+    return reply.send(result);
+  },
+
   async registerPayment(req: FastifyRequest, reply: FastifyReply) {
     const params = paymentParamsSchema.parse(req.params);
     const body = paymentBodySchema.parse(req.body);
@@ -167,6 +205,19 @@ export const bookingController = {
       ...getRequester(req),
       bookingId: params.bookingId,
       ...body,
+    });
+
+    return reply.send(booking);
+  },
+
+  async updateServices(req: FastifyRequest, reply: FastifyReply) {
+    const params = statusParamsSchema.parse(req.params);
+    const body = updateServicesBodySchema.parse(req.body);
+
+    const booking = await bookingService.updateServices({
+      ...getRequester(req),
+      bookingId: params.bookingId,
+      serviceIds: body.serviceIds,
     });
 
     return reply.send(booking);
@@ -197,15 +248,15 @@ export const bookingController = {
   },
 
   async cancel(req: FastifyRequest, reply: FastifyReply) {
-  const { bookingId } = bookingParamsSchema.parse(req.params);
-  const body = cancelBodySchema.parse(req.body ?? {});
+    const { bookingId } = bookingParamsSchema.parse(req.params);
+    const body = cancelBodySchema.parse(req.body ?? {});
 
-  await bookingService.cancel({
-    ...getRequester(req),
-    bookingId,
-    cancellationReason: body.cancellationReason,
-  });
+    await bookingService.cancel({
+      ...getRequester(req),
+      bookingId,
+      cancellationReason: body.cancellationReason,
+    });
 
-  return reply.status(204).send();
-},
+    return reply.status(204).send();
+  },
 };

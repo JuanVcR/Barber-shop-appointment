@@ -31,6 +31,7 @@ export const clientRepository = {
     name?: string;
     phone?: string;
     cpf?: string;
+    email?: string | null;
   }) {
     return prisma.client.update({
       where: { id },

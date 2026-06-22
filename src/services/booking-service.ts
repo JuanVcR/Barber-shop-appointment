@@ -5,7 +5,7 @@ import { serviceRepository } from '../repositories/service-repository.js';
 import { barberRepository } from '../repositories/barber-repository.js';
 import { clientRepository } from '../repositories/client-repository.js';
 import { barbershopRepository } from '../repositories/barbershop-repository.js';
-import { addMinutesToTime, getWeekDayFromDay, intervalsOverlap, isValidDay, isValidTime, minutesToTime, timeToMinutes} from '../utils/datetime.js';
+import { addDaysToDay, addMinutesToTime, getWeekDayFromDay, intervalsOverlap, isValidDay, isValidTime, minutesToTime, timeToMinutes} from '../utils/datetime.js';
 
 async function ensureCanAccessBooking(data: {
   accountId: string;
@@ -27,6 +27,38 @@ async function ensureCanAccessBooking(data: {
 
   if (!admin) {
     throw new AppError('Acesso negado', 403);
+  }
+}
+
+async function ensureCanManageBarber(data: {
+  accountId: string;
+  role: string;
+  barberId: string;
+  barbershopId: string;
+}) {
+  if (!['BARBER', 'BARBERSHOP_ADMIN', 'SUPER_ADMIN'].includes(data.role)) {
+    throw new AppError('Perfil sem permissao para cadastrar atendimento', 403);
+  }
+
+  const barber = await barberRepository.findById(data.barberId);
+
+  if (!barber || barber.barbershopId !== data.barbershopId) {
+    throw new AppError('Barbeiro nao pertence a esta barbearia', 400);
+  }
+
+  if (data.role === 'BARBER' && barber.accountId !== data.accountId) {
+    throw new AppError('Barbeiro so pode cadastrar atendimento para si mesmo', 403);
+  }
+
+  if (data.role === 'BARBERSHOP_ADMIN') {
+    const admin = await barbershopRepository.findAdmin(
+      data.barbershopId,
+      data.accountId
+    );
+
+    if (!admin) {
+      throw new AppError('Administrador nao pertence a esta barbearia', 403);
+    }
   }
 }
 
@@ -204,11 +236,16 @@ export const bookingService = {
       data.client.phone,
       data.barbershopId
     );
-    const client = existingClient ?? (await clientRepository.create({
-      name: data.client.name,
-      phone: data.client.phone,
-      email: data.client.email,
-    }));
+    const client = existingClient
+      ? await clientRepository.update(existingClient.id, {
+          name: data.client.name,
+          email: data.client.email ?? existingClient.email,
+        })
+      : await clientRepository.create({
+          name: data.client.name,
+          phone: data.client.phone,
+          email: data.client.email,
+        });
 
     await clientRepository.linkToBarbershop({
       clientId: client.id,
@@ -244,6 +281,32 @@ export const bookingService = {
     return booking;
   },
 
+  async createQuick(data: {
+    accountId: string;
+    role: string;
+    client: {
+      name: string;
+      phone: string;
+      email?: string | null;
+    };
+    barberId: string;
+    serviceIds: string[];
+    barbershopId: string;
+    day: string;
+    startTime: string;
+  }) {
+    await ensureCanManageBarber(data);
+
+    return this.createGuest({
+      client: data.client,
+      barberId: data.barberId,
+      serviceIds: data.serviceIds,
+      barbershopId: data.barbershopId,
+      day: data.day,
+      startTime: data.startTime,
+    });
+  },
+
   async listByDay(barbershopId: string, day: string) {
     if (!isValidDay(day)) {
       throw new AppError('Data invalida', 400);
@@ -272,6 +335,60 @@ export const bookingService = {
     }
 
     return this.listByDay(data.barbershopId, data.day);
+  },
+
+  async listWeekForRequester(data: {
+    accountId: string;
+    role: string;
+    startDay: string;
+    barbershopId?: string;
+  }) {
+    if (!isValidDay(data.startDay)) {
+      throw new AppError('Data inicial invalida', 400);
+    }
+
+    const endDay = addDaysToDay(data.startDay, 6);
+
+    if (data.role === 'BARBER') {
+      const barber = await barberRepository.findByAccountId(data.accountId);
+
+      if (!barber) {
+        throw new AppError('Barbeiro nao encontrado para esta conta', 404);
+      }
+
+      const bookings = await bookingRepository.findByBarberRange(
+        barber.id,
+        data.startDay,
+        endDay
+      );
+
+      return { startDay: data.startDay, endDay, bookings };
+    }
+
+    if (!data.barbershopId) {
+      throw new AppError('Informe a barbearia', 400);
+    }
+
+    if (data.role === 'BARBERSHOP_ADMIN') {
+      const admin = await barbershopRepository.findAdmin(
+        data.barbershopId,
+        data.accountId
+      );
+
+      if (!admin) {
+        throw new AppError('Administrador nao pertence a esta barbearia', 403);
+      }
+    } else if (data.role !== 'SUPER_ADMIN') {
+      throw new AppError('Perfil sem permissao para ver agenda semanal', 403);
+    }
+
+    const bookings = await bookingRepository.findByBarbershopRange(
+      data.barbershopId,
+      data.startDay,
+      endDay
+    );
+
+    return { startDay: data.startDay, endDay, bookings };
   },
 
   async listForRequester(data: {
@@ -469,6 +586,66 @@ export const bookingService = {
     }
 
     return updated;
+  },
+
+  async updateServices(data: {
+    accountId: string;
+    role: string;
+    bookingId: string;
+    serviceIds: string[];
+  }) {
+    if (!['BARBER', 'BARBERSHOP_ADMIN', 'SUPER_ADMIN'].includes(data.role)) {
+      throw new AppError('Perfil sem permissao para alterar servicos', 403);
+    }
+
+    if (!data.serviceIds.length) {
+      throw new AppError('Informe ao menos um servico', 400);
+    }
+
+    const booking = await bookingRepository.findById(data.bookingId);
+
+    if (!booking) {
+      throw new AppError('Agendamento nao encontrado', 404);
+    }
+
+    if (booking.status !== 'SCHEDULED') {
+      throw new AppError('Servicos so podem ser alterados antes da conclusao', 400);
+    }
+
+    await ensureCanAccessBooking({
+      accountId: data.accountId,
+      role: data.role,
+      booking,
+    });
+
+    const services = await serviceRepository.findManyByIds(data.serviceIds);
+
+    if (
+      services.length !== data.serviceIds.length ||
+      services.some((service) => service.barbershopId !== booking.barbershopId)
+    ) {
+      throw new AppError('Servico nao pertence a esta barbearia', 400);
+    }
+
+    const canPerformAll = services.every((service) =>
+      service.barbers.some((item) => item.barberId === booking.barberId)
+    );
+
+    if (!canPerformAll) {
+      throw new AppError('O barbeiro nao atende todos os servicos selecionados', 400);
+    }
+
+    const totalDuration = services.reduce(
+      (total, service) => total + service.duration,
+      0
+    );
+
+    return bookingRepository.replaceServices({
+      bookingId: booking.id,
+      serviceIds: data.serviceIds,
+      totalDuration,
+      endTime: addMinutesToTime(booking.startTime, totalDuration),
+    });
   },
 
   async cancel(data: {

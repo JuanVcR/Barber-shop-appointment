@@ -1,4 +1,4 @@
-import { getDay, isValid, parse } from 'date-fns';
+import { addDays, format, getDay, isValid, parse } from 'date-fns';
 
 export function isValidDay(day: string) {
   const parsed = parse(day, 'yyyy-MM-dd', new Date());
@@ -7,6 +7,10 @@ export function isValidDay(day: string) {
 
 export function getWeekDayFromDay(day: string) {
   return getDay(parse(day, 'yyyy-MM-dd', new Date()));
+}
+
+export function addDaysToDay(day: string, amount: number) {
+  return format(addDays(parse(day, 'yyyy-MM-dd', new Date()), amount), 'yyyy-MM-dd');
 }
 
 export function isValidTime(time: string) {

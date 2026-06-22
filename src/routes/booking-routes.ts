@@ -14,10 +14,22 @@ export async function bookingRoutes(app: FastifyInstance) {
     bookingController.createGuest
   );
 
+  app.post(
+    '/bookings/quick',
+    { preHandler: authMiddleware },
+    bookingController.createQuick
+  );
+
   app.get(
     '/bookings/me',
     { preHandler: authMiddleware },
     bookingController.listMine
+  );
+
+  app.get(
+    '/bookings/week',
+    { preHandler: authMiddleware },
+    bookingController.listWeek
   );
 
   app.get(
@@ -41,6 +53,12 @@ export async function bookingRoutes(app: FastifyInstance) {
     '/bookings/:bookingId/status',
     { preHandler: authMiddleware },
     bookingController.updateStatus
+  );
+
+  app.patch(
+    '/bookings/:bookingId/services',
+    { preHandler: authMiddleware },
+    bookingController.updateServices
   );
 
   app.patch(

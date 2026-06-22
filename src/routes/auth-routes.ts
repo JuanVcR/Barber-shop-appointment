@@ -15,6 +15,11 @@ export async function authRoutes(app: FastifyInstance) {
   );
 
   app.post(
+    '/forgot-password',
+    { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } },
+    authController.forgotPassword
+  );
+  app.post(
     '/forgot-password/user',
     { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } },
     authController.forgotUserPassword
