@@ -46,6 +46,7 @@ vi.mock('../repositories/barber-repository.js', () => ({
 }));
 
 vi.mock('./notification-service.js', () => ({
+  buildPasswordResetUrl: vi.fn((token: string) => `http://localhost:5173/#/auth/reset-password?token=${token}`),
   notificationService: {
     sendPasswordResetEmail: vi.fn(),
     sendBarberInviteEmail: vi.fn(),

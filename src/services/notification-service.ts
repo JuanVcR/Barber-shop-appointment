@@ -2,6 +2,10 @@ import { mailer } from '../lib/mailer.js';
 import { env } from '../config/env.js';
 import { AppError } from '../errors/app-error.js';
 
+export function buildPasswordResetUrl(token: string) {
+  return `${env.FRONTEND_URL}/#/auth/reset-password?token=${encodeURIComponent(token)}`;
+}
+
 export const notificationService = {
   async sendBookingEmail(data: {
     to?: string | null;
@@ -42,7 +46,7 @@ export const notificationService = {
     name: string;
     token: string;
   }) {
-    const resetUrl = `${env.FRONTEND_URL}/#/auth/reset-password?token=${encodeURIComponent(data.token)}`;
+    const resetUrl = buildPasswordResetUrl(data.token);
 
     try {
       await mailer.sendMail({

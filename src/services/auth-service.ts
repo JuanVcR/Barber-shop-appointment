@@ -10,7 +10,7 @@ import { barberRepository } from '../repositories/barber-repository.js';
 import { barbershopAdminRepository } from '../repositories/barbershop-admin-repository.js';
 import { clientRepository } from '../repositories/client-repository.js';
 import { passwordResetRepository } from '../repositories/password-reset-repository.js';
-import { notificationService } from './notification-service.js';
+import { buildPasswordResetUrl, notificationService } from './notification-service.js';
 
 const refreshSecret = env.JWT_REFRESH_SECRET ?? env.JWT_SECRET;
 const hashToken = (token: string) =>
@@ -201,13 +201,30 @@ export const authService = {
       expiresAt,
     });
 
-    await notificationService.sendPasswordResetEmail({
-      to: account.email,
-      name: account.email,
-      token,
-    });
+    const resetUrl = buildPasswordResetUrl(token);
 
-    return { message: 'Email de recuperacao enviado com sucesso' };
+    try {
+      await notificationService.sendPasswordResetEmail({
+        to: account.email,
+        name: account.email,
+        token,
+      });
+    } catch (error) {
+      if (env.NODE_ENV === 'production') {
+        throw error;
+      }
+
+      return {
+        message: 'Email nao enviado. Use o link de teste para recuperar a senha.',
+        emailSent: false,
+        resetUrl,
+      };
+    }
+
+    return {
+      message: 'Email de recuperacao enviado com sucesso',
+      emailSent: true,
+    };
   },
 
   async requestUserPasswordReset(email: string) {
