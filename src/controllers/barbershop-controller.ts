@@ -110,6 +110,36 @@ const imageParamsSchema = barbershopParamsSchema.extend({
   type: z.enum(['logo', 'cover']),
 });
 
+function detectImageExtension(buffer: Buffer) {
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return 'png';
+  }
+
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return 'jpg';
+  }
+
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) {
+    return 'webp';
+  }
+
+  return null;
+}
+
 export const barbershopController = {
   async list(req: FastifyRequest, reply: FastifyReply) {
     const barbershops = await barbershopService.list();
@@ -291,11 +321,17 @@ export const barbershopController = {
       throw new AppError('Envie uma imagem PNG, JPEG ou WebP', 400);
     }
 
-    const extension = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const buffer = await file.toBuffer();
+    const extension = detectImageExtension(buffer);
+
+    if (!extension) {
+      throw new AppError('Arquivo invalido. Envie uma imagem real PNG, JPEG ou WebP', 400);
+    }
+
     const directory = path.resolve(env.UPLOAD_DIR, 'barbershops');
     const filename = `${barbershopId}-${type}-${crypto.randomUUID()}.${extension}`;
     await mkdir(directory, { recursive: true });
-    await writeFile(path.join(directory, filename), await file.toBuffer());
+    await writeFile(path.join(directory, filename), buffer);
     const url = `${env.APP_URL}/uploads/barbershops/${filename}`;
 
     const barbershop = await barbershopService.update({

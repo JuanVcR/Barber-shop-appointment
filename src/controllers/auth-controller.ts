@@ -2,31 +2,39 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { authService } from '../services/auth-service.js';
 
+const strongPasswordSchema = z
+  .string()
+  .min(8)
+  .regex(/[A-Z]/, 'A senha deve ter ao menos uma letra maiuscula')
+  .regex(/[a-z]/, 'A senha deve ter ao menos uma letra minuscula')
+  .regex(/[0-9]/, 'A senha deve ter ao menos um numero')
+  .regex(/[^A-Za-z0-9]/, 'A senha deve ter ao menos um simbolo');
+
 const registerSchema = z.object({
   name: z.string().min(2),
-  email: z.string().email(),
+  email: z.string().email().toLowerCase(),
   phone: z.string().min(11),
   cpf: z.string().min(11).optional(),
-  password: z.string().min(8),
+  password: strongPasswordSchema,
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().toLowerCase(),
   password: z.string().min(8),
 });
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(8),
-  newPassword: z.string().min(8),
+  newPassword: strongPasswordSchema,
 });
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().toLowerCase(),
 });
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1),
-  newPassword: z.string().min(8),
+  newPassword: strongPasswordSchema,
 });
 
 const createBarberSchema = z.object({
@@ -39,7 +47,7 @@ const createBarberSchema = z.object({
 
 const acceptBarberInviteSchema = z.object({
   token: z.string().min(1),
-  password: z.string().min(8),
+  password: strongPasswordSchema,
   name: z.string().min(2).optional(),
   phone: z.string().min(11).optional(),
   availability: z.array(z.object({
@@ -95,7 +103,10 @@ export const authController = {
   async login(req: FastifyRequest, reply: FastifyReply) {
     const body = loginSchema.parse(req.body);
 
-    const result = await authService.login(body);
+    const result = await authService.login({
+      ...body,
+      ip: req.ip,
+    });
     setRefreshCookie(reply, result.refreshToken);
 
     const { refreshToken: _refreshToken, ...response } = result;

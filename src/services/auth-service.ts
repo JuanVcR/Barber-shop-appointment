@@ -16,6 +16,69 @@ const refreshSecret = env.JWT_REFRESH_SECRET ?? env.JWT_SECRET;
 const hashToken = (token: string) =>
   crypto.createHash('sha256').update(token).digest('hex');
 
+const loginAttempts = new Map<string, { count: number; firstAttemptAt: number; lockedUntil?: number }>();
+const loginWindowMs = 15 * 60 * 1000;
+const loginLockMs = 15 * 60 * 1000;
+const maxLoginAttempts = 5;
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function assertStrongPassword(password: string) {
+  const isStrong =
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password);
+
+  if (!isStrong) {
+    throw new AppError('Senha fraca. Use maiuscula, minuscula, numero e simbolo.', 400);
+  }
+}
+
+function loginAttemptKey(email: string, ip?: string) {
+  return `${normalizeEmail(email)}:${ip ?? 'unknown'}`;
+}
+
+function assertLoginNotLocked(email: string, ip?: string) {
+  const attempt = loginAttempts.get(loginAttemptKey(email, ip));
+  const now = Date.now();
+
+  if (!attempt) return;
+
+  if (attempt.lockedUntil && attempt.lockedUntil > now) {
+    throw new AppError('Muitas tentativas de login. Tente novamente em alguns minutos.', 429);
+  }
+
+  if (attempt.firstAttemptAt + loginWindowMs < now) {
+    loginAttempts.delete(loginAttemptKey(email, ip));
+  }
+}
+
+function registerFailedLogin(email: string, ip?: string) {
+  const key = loginAttemptKey(email, ip);
+  const now = Date.now();
+  const attempt = loginAttempts.get(key);
+
+  if (!attempt || attempt.firstAttemptAt + loginWindowMs < now) {
+    loginAttempts.set(key, { count: 1, firstAttemptAt: now });
+    return;
+  }
+
+  const count = attempt.count + 1;
+  loginAttempts.set(key, {
+    count,
+    firstAttemptAt: attempt.firstAttemptAt,
+    lockedUntil: count >= maxLoginAttempts ? now + loginLockMs : attempt.lockedUntil,
+  });
+}
+
+function clearFailedLogins(email: string, ip?: string) {
+  loginAttempts.delete(loginAttemptKey(email, ip));
+}
+
 export const authService = {
   async getBarberInvite(token: string) {
     const invite = await barberInviteRepository.findValidByToken(token);
@@ -45,7 +108,9 @@ export const authService = {
     cpf?: string | null;
     password: string;
   }) {
-    const existingAccount = await accountRepository.findByEmail(data.email);
+    assertStrongPassword(data.password);
+    const email = normalizeEmail(data.email);
+    const existingAccount = await accountRepository.findByEmail(email);
 
     if (existingAccount) {
       throw new AppError('Email ja cadastrado', 400);
@@ -68,7 +133,7 @@ export const authService = {
     const passwordHash = await bcrypt.hash(data.password, 10);
 
     const account = await accountRepository.create({
-      email: data.email,
+      email,
       password: passwordHash,
       role: 'CLIENT',
     });
@@ -77,7 +142,7 @@ export const authService = {
       accountId: account.id,
       name: data.name,
       phone: data.phone,
-      email: data.email,
+      email,
       cpf: data.cpf,
     });
   },
@@ -95,22 +160,30 @@ export const authService = {
   async login(data: {
     email: string;
     password: string;
+    ip?: string;
   }) {
-    const account = await accountRepository.findByEmail(data.email);
+    const email = normalizeEmail(data.email);
+    assertLoginNotLocked(email, data.ip);
+    const account = await accountRepository.findByEmail(email);
 
     if (!account) {
+      registerFailedLogin(email, data.ip);
       throw new AppError('Credenciais invalidas', 401);
     }
 
     if (account.deletedAt) {
+      registerFailedLogin(email, data.ip);
       throw new AppError('Credenciais invalidas', 401);
     }
 
     const valid = await bcrypt.compare(data.password, account.password);
 
     if (!valid) {
+      registerFailedLogin(email, data.ip);
       throw new AppError('Credenciais invalidas', 401);
     }
+
+    clearFailedLogins(email, data.ip);
 
     const token = jwt.sign({
       sub: account.id,
@@ -146,7 +219,9 @@ export const authService = {
     password: string;
     role: AccountRole;
   }) {
-    const existingAccount = await accountRepository.findByEmail(data.email);
+    assertStrongPassword(data.password);
+    const email = normalizeEmail(data.email);
+    const existingAccount = await accountRepository.findByEmail(email);
 
     if (existingAccount) {
       throw new AppError('Email ja cadastrado', 400);
@@ -155,7 +230,7 @@ export const authService = {
     const passwordHash = await bcrypt.hash(data.password, 10);
 
     return accountRepository.create({
-      email: data.email,
+      email,
       password: passwordHash,
       role: data.role,
     });
@@ -166,6 +241,7 @@ export const authService = {
     currentPassword: string;
     newPassword: string;
   }) {
+    assertStrongPassword(data.newPassword);
     const account = await accountRepository.findById(data.accountId);
 
     if (!account) {
@@ -186,7 +262,7 @@ export const authService = {
   },
 
   async requestPasswordReset(email: string) {
-    const account = await accountRepository.findByEmail(email);
+    const account = await accountRepository.findByEmail(normalizeEmail(email));
 
     if (!account) {
       return { message: 'Se o email existir, enviaremos instrucoes' };
@@ -239,6 +315,7 @@ export const authService = {
     token: string;
     newPassword: string;
   }) {
+    assertStrongPassword(data.newPassword);
     const resetToken = await passwordResetRepository.findValidToken(
       hashToken(data.token)
     );
@@ -266,6 +343,7 @@ export const authService = {
     barbershopId: string;
     serviceIds?: string[];
   }) {
+    const email = normalizeEmail(data.email);
     if (!data.requester?.accountId) {
       throw new AppError('Conta do administrador nao informada', 400);
     }
@@ -285,7 +363,7 @@ export const authService = {
       }
     }
 
-    const existingAccount = await accountRepository.findByEmail(data.email);
+    const existingAccount = await accountRepository.findByEmail(email);
 
     if (existingAccount) {
       throw new AppError('Email ja cadastrado', 400);
@@ -293,7 +371,7 @@ export const authService = {
 
     const pendingInvite = await barberInviteRepository.findPendingByEmail(
       data.barbershopId,
-      data.email
+      email
     );
 
     if (pendingInvite) {
@@ -312,7 +390,7 @@ export const authService = {
     const token = crypto.randomUUID();
     const invite = await barberInviteRepository.create({
       token,
-      email: data.email,
+      email,
       name: data.name,
       phone: data.phone,
       barbershopId: data.barbershopId,
@@ -325,7 +403,7 @@ export const authService = {
 
     try {
       await notificationService.sendBarberInviteEmail({
-        to: data.email,
+        to: email,
         name: data.name,
         barbershopName: invite.barbershop.name,
         inviteToken: token,
@@ -338,7 +416,7 @@ export const authService = {
 
     return {
       id: invite.id,
-      email: data.email,
+      email,
       phone: data.phone,
       token,
       inviteUrl,
@@ -360,13 +438,14 @@ export const authService = {
       endTime: string;
     }>;
   }) {
+    assertStrongPassword(data.password);
     const invite = await barberInviteRepository.findValidByToken(data.token);
 
     if (!invite) {
       throw new AppError('Convite invalido ou expirado', 400);
     }
 
-    const existingAccount = await accountRepository.findByEmail(invite.email);
+    const existingAccount = await accountRepository.findByEmail(normalizeEmail(invite.email));
 
     if (existingAccount) {
       throw new AppError('Email ja cadastrado', 400);
@@ -374,7 +453,7 @@ export const authService = {
 
     const passwordHash = await bcrypt.hash(data.password, 10);
     const account = await accountRepository.create({
-      email: invite.email,
+      email: normalizeEmail(invite.email),
       password: passwordHash,
       role: 'BARBER',
     });
@@ -414,6 +493,7 @@ export const authService = {
     email: string;
     barbershopId?: string;
   }) {
+    const email = normalizeEmail(data.email);
     if (data.requester.role !== 'SUPER_ADMIN') {
       throw new AppError('Apenas super admin pode criar administradores', 403);
     }
@@ -422,18 +502,18 @@ export const authService = {
       throw new AppError('Informe a barbearia do administrador', 400);
     }
 
-    const existingAccount = await accountRepository.findByEmail(data.email);
+    const existingAccount = await accountRepository.findByEmail(email);
 
     if (existingAccount) {
       throw new AppError('Email ja cadastrado', 400);
     }
 
     const role = 'BARBERSHOP_ADMIN';
-    const temporaryPassword = crypto.randomUUID().slice(0, 12);
+    const temporaryPassword = `${crypto.randomUUID().slice(0, 8)}Aa!1`;
     const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
     const account = await accountRepository.create({
-      email: data.email,
+      email,
       password: passwordHash,
       role,
     });
@@ -444,18 +524,17 @@ export const authService = {
     });
 
     await notificationService.sendAdminInviteEmail({
-      to: data.email,
+      to: email,
       name: data.name,
-      email: data.email,
+      email,
       password: temporaryPassword,
       role,
     });
 
     return {
       id: account.id,
-      email: data.email,
+      email,
       role,
-      temporaryPassword,
       message: 'Administrador criado! Email com credenciais enviado.',
     };
   },

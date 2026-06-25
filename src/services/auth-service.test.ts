@@ -98,7 +98,7 @@ describe('authService', () => {
       name: 'Joao',
       email: 'joao@test.com',
       phone: '5581999999999',
-      password: '123456',
+      password: 'Senha123!',
     });
 
     expect(accountRepository.findByEmail).toHaveBeenCalledWith('joao@test.com');
@@ -122,7 +122,7 @@ describe('authService', () => {
         name: 'Joao',
         email: 'joao@test.com',
         phone: '5581999999999',
-        password: '123456',
+        password: 'Senha123!',
       })
     ).rejects.toThrow('Email ja cadastrado');
   });
@@ -194,7 +194,7 @@ describe('authService', () => {
 
     const result = await authService.login({
       email: 'joao@test.com',
-      password: '123456',
+      password: 'Senha123!',
     });
 
     expect(accountRepository.updateRefreshToken).toHaveBeenCalledWith(
@@ -269,7 +269,7 @@ describe('authService', () => {
 
     const result = await authService.resetPassword({
       token: 'token-123',
-      newPassword: 'new-password',
+      newPassword: 'NovaSenha123!',
     });
 
     expect(accountRepository.updatePassword).toHaveBeenCalledWith('account-1', 'new-hash');
