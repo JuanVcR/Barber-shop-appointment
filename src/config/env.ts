@@ -15,6 +15,9 @@ const envSchema = z.object({
   SMTP_USER: z.string().min(1),
   SMTP_PASS: z.string().min(1),
   SMTP_FROM: z.string().email(),
+  SMTP_SECURE: z.preprocess((v) => v === 'true' || v === true, z.boolean().optional()),
+  SMTP_REQUIRE_TLS: z.preprocess((v) => v === 'true' || v === true, z.boolean().optional()),
+  SMTP_TLS_REJECT_UNAUTHORIZED: z.preprocess((v) => v === 'false' || v === false ? false : true, z.boolean().optional()),
   SENTRY_DSN: z.preprocess(
     (value) => value === '' ? undefined : value,
     z.string().url().optional()

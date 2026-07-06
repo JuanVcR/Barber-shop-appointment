@@ -1,4 +1,5 @@
 import { mailer } from '../lib/mailer.js';
+import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
 import { AppError } from '../errors/app-error.js';
 
@@ -47,7 +48,6 @@ export const notificationService = {
     token: string;
   }) {
     const resetUrl = buildPasswordResetUrl(data.token);
-
     try {
       await mailer.sendMail({
         from: env.SMTP_FROM,
@@ -59,7 +59,42 @@ export const notificationService = {
           <p><a href="${resetUrl}">${resetUrl}</a></p>
         `,
       });
-    } catch {
+
+      return { previewUrl: undefined };
+    } catch (err) {
+      // In development, fall back to an Ethereal test account so developer can view the email
+      if (env.NODE_ENV !== 'production') {
+        try {
+          const testAccount = await nodemailer.createTestAccount();
+          const testTransport = nodemailer.createTransport({
+            host: testAccount.smtp.host,
+            port: testAccount.smtp.port,
+            secure: testAccount.smtp.secure,
+            auth: {
+              user: testAccount.user,
+              pass: testAccount.pass,
+            },
+          });
+
+          const info = await testTransport.sendMail({
+            from: env.SMTP_FROM,
+            to: data.to,
+            subject: 'Recuperacao de senha (TEST)',
+            html: `
+              <p>Ola, ${data.name}</p>
+              <p>Clique no link abaixo para redefinir sua senha:</p>
+              <p><a href="${resetUrl}">${resetUrl}</a></p>
+            `,
+          });
+
+          const previewUrl = nodemailer.getTestMessageUrl(info) ?? undefined;
+          return { previewUrl };
+        } catch (testErr) {
+          // If even the test send fails, return an explicit application error
+          throw new AppError('Falha ao enviar email de recuperacao', 400);
+        }
+      }
+
       throw new AppError('Falha ao enviar email de recuperacao', 400);
     }
   },

@@ -280,11 +280,25 @@ export const authService = {
     const resetUrl = buildPasswordResetUrl(token);
 
     try {
-      await notificationService.sendPasswordResetEmail({
+      const result = await notificationService.sendPasswordResetEmail({
         to: account.email,
         name: account.email,
         token,
       });
+
+      if (result && (result as any).previewUrl) {
+        return {
+          message: 'Email nao enviado. Use o link de teste para recuperar a senha.',
+          emailSent: false,
+          resetUrl,
+          previewUrl: (result as any).previewUrl,
+        };
+      }
+
+      return {
+        message: 'Email de recuperacao enviado com sucesso',
+        emailSent: true,
+      };
     } catch (error) {
       if (env.NODE_ENV === 'production') {
         throw error;
@@ -296,11 +310,6 @@ export const authService = {
         resetUrl,
       };
     }
-
-    return {
-      message: 'Email de recuperacao enviado com sucesso',
-      emailSent: true,
-    };
   },
 
   async requestUserPasswordReset(email: string) {
