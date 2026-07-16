@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "TMPDIR=/tmp TEMP=/tmp TMP=/tmp tsx src/server.ts",
     "build": "tsc",
+    "postinstall": "prisma generate",
     "start": "node dist/src/server.js",
     "seed": "tsx prisma/seed.ts",
     "prisma:generate": "prisma generate",
