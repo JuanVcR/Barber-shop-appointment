@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "TMPDIR=/tmp TEMP=/tmp TMP=/tmp tsx src/server.ts",
     "build": "tsc",
-    "postinstall": "prisma generate",
+    "postinstall": "DATABASE_URL=${DATABASE_URL:-postgresql://user:password@localhost:5432/barbershop} prisma generate",
     "start": "node dist/src/server.js",
     "seed": "tsx prisma/seed.ts",
     "prisma:generate": "prisma generate",
