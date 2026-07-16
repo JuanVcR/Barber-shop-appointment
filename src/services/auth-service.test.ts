@@ -69,7 +69,10 @@ vi.mock('jsonwebtoken', () => ({
 describe('authService', () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.JWT_SECRET = 'test-secret';
+    process.env.JWT_SECRET = 'test-secret-with-at-least-32-characters';
+    process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-with-32-characters';
+    process.env.JWT_ISSUER = 'barberflow-api';
+    process.env.JWT_AUDIENCE = 'barberflow-client';
   });
 
   it('should register a new client account', async () => {

@@ -22,7 +22,11 @@ export async function authMiddleware(req: FastifyRequest, reply: FastifyReply) {
   }
 
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+    const payload = jwt.verify(token, env.JWT_SECRET, {
+      algorithms: ['HS256'],
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE,
+    }) as TokenPayload;
 
     const validRoles = ['SUPER_ADMIN', 'BARBERSHOP_ADMIN', 'BARBER', 'CLIENT'];
     if (

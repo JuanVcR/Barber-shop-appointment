@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../config/env.js', () => ({
   env: {
-    JWT_SECRET: 'test-secret',
+    JWT_SECRET: 'test-secret-with-at-least-32-characters',
+    JWT_ISSUER: 'barberflow-api',
+    JWT_AUDIENCE: 'barberflow-client',
   },
 }));
 
@@ -69,7 +71,11 @@ describe('authMiddleware', () => {
 
     await authMiddleware(req, reply);
 
-    expect(jwt.verify).toHaveBeenCalledWith('valid-token', 'test-secret');
+    expect(jwt.verify).toHaveBeenCalledWith('valid-token', 'test-secret-with-at-least-32-characters', {
+      algorithms: ['HS256'],
+      issuer: 'barberflow-api',
+      audience: 'barberflow-client',
+    });
     expect(req.user).toEqual({ id: 'account-1', role: 'CLIENT' });
     expect(reply.status).not.toHaveBeenCalled();
   });

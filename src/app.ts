@@ -17,6 +17,7 @@ import { serviceRoutes } from './routes/service-routes.js';
 import { reportRoutes } from './routes/report-routes.js';
 import { ZodError } from 'zod';
 import { env } from './config/env.js';
+import { corsOrigins } from './config/env.js';
 import { prisma } from './database/prisma.js';
 import { auditLogRepository } from './repositories/audit-log-repository.js';
 import { captureException } from './config/monitoring.js';
@@ -29,12 +30,24 @@ export async function buildApp() {
   });
 
   await app.register(cors, {
-    origin: env.FRONTEND_URL,
+    origin(origin, callback) {
+      if (!origin || corsOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error('Origin not allowed'), false);
+    },
     credentials: true,
   });
 
   await app.register(cookie);
-  await app.register(helmet);
+  await app.register(helmet, {
+    global: true,
+    hsts: env.NODE_ENV === 'production'
+      ? { maxAge: 15552000, includeSubDomains: true, preload: false }
+      : false,
+  });
   await app.register(multipart, {
     limits: { fileSize: 3 * 1024 * 1024, files: 1 },
   });
@@ -44,8 +57,12 @@ export async function buildApp() {
   });
 
   await app.register(rateLimit, {
-    max: 100,
-    timeWindow: '1 minute',
+    max: env.GLOBAL_RATE_LIMIT_MAX,
+    timeWindow: env.GLOBAL_RATE_LIMIT_WINDOW,
+    allowList: (req) => req.url === '/health',
+    errorResponseBuilder() {
+      return { message: 'Muitas requisicoes. Tente novamente em alguns instantes.' };
+    },
   });
 
   app.get('/health', async (_req, reply) => {

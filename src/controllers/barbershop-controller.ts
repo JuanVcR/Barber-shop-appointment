@@ -314,6 +314,10 @@ export const barbershopController = {
   },
 
   async uploadImage(req: FastifyRequest, reply: FastifyReply) {
+    if (env.NODE_ENV === 'production' && !env.ALLOW_LOCAL_UPLOADS_IN_PRODUCTION) {
+      throw new AppError('Uploads locais estao desativados em producao. Configure um storage externo.', 503);
+    }
+
     const { barbershopId, type } = imageParamsSchema.parse(req.params);
     const file = await req.file();
 
@@ -322,6 +326,11 @@ export const barbershopController = {
     }
 
     const buffer = await file.toBuffer();
+
+    if (buffer.length > 3 * 1024 * 1024) {
+      throw new AppError('Imagem muito grande. Envie um arquivo de ate 3MB', 400);
+    }
+
     const extension = detectImageExtension(buffer);
 
     if (!extension) {

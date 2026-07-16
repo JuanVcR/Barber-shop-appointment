@@ -6,10 +6,14 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(3333),
   DATABASE_URL: z.string().min(1),
-  JWT_SECRET: z.string().min(1),
-  JWT_REFRESH_SECRET: z.string().min(1).optional(),
+  JWT_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32).optional(),
+  JWT_ISSUER: z.string().min(1).default('barberflow-api'),
+  JWT_AUDIENCE: z.string().min(1).default('barberflow-client'),
+  BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   APP_URL: z.string().default('http://localhost:3333'),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  CORS_ORIGINS: z.string().optional(),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().min(1),
@@ -23,18 +27,16 @@ const envSchema = z.object({
     z.string().url().optional()
   ),
   UPLOAD_DIR: z.string().default('uploads'),
+  ALLOW_LOCAL_UPLOADS_IN_PRODUCTION: z.preprocess(
+    (v) => v === 'true' || v === true,
+    z.boolean().default(false)
+  ),
+  GLOBAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  GLOBAL_RATE_LIMIT_WINDOW: z.string().min(1).default('1 minute'),
 }).superRefine((env, ctx) => {
-  if (env.NODE_ENV === 'production' && env.JWT_SECRET.length < 32) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['JWT_SECRET'],
-      message: 'JWT_SECRET must have at least 32 characters in production',
-    });
-  }
-
   if (
     env.NODE_ENV === 'production' &&
-    (!env.JWT_REFRESH_SECRET || env.JWT_REFRESH_SECRET.length < 32)
+    !env.JWT_REFRESH_SECRET
   ) {
     ctx.addIssue({
       code: 'custom',
@@ -53,6 +55,47 @@ const envSchema = z.object({
       message: 'JWT_REFRESH_SECRET must be different from JWT_SECRET',
     });
   }
+
+  if (env.NODE_ENV === 'production') {
+    const insecureUrls = [
+      ['DATABASE_URL', env.DATABASE_URL],
+      ['APP_URL', env.APP_URL],
+      ['FRONTEND_URL', env.FRONTEND_URL],
+    ];
+
+    for (const [name, value] of insecureUrls) {
+      if (value.includes('localhost') || value.includes('127.0.0.1')) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: `${name} must not use localhost in production`,
+        });
+      }
+    }
+
+    for (const [name, value] of [['APP_URL', env.APP_URL], ['FRONTEND_URL', env.FRONTEND_URL]]) {
+      if (!value.startsWith('https://')) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: `${name} must use HTTPS in production`,
+        });
+      }
+    }
+
+    if (env.SMTP_USER.includes('seu-email') || env.SMTP_PASS.includes('app-password')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SMTP_USER'],
+        message: 'SMTP credentials must be real in production',
+      });
+    }
+  }
 });
 
 export const env = envSchema.parse(process.env);
+
+export const corsOrigins = (env.CORS_ORIGINS ?? env.FRONTEND_URL)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);

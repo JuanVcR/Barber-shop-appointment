@@ -13,6 +13,11 @@ import { passwordResetRepository } from '../repositories/password-reset-reposito
 import { buildPasswordResetUrl, notificationService } from './notification-service.js';
 
 const refreshSecret = env.JWT_REFRESH_SECRET ?? env.JWT_SECRET;
+const jwtOptions = {
+  algorithm: 'HS256' as const,
+  issuer: env.JWT_ISSUER,
+  audience: env.JWT_AUDIENCE,
+};
 const hashToken = (token: string) =>
   crypto.createHash('sha256').update(token).digest('hex');
 
@@ -130,7 +135,7 @@ export const authService = {
       }
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 10);
+    const passwordHash = await bcrypt.hash(data.password, env.BCRYPT_ROUNDS);
 
     const account = await accountRepository.create({
       email,
@@ -190,13 +195,14 @@ export const authService = {
       role: account.role,
       type: 'access',
     }, env.JWT_SECRET, {
+      ...jwtOptions,
       expiresIn: '15m',
     });
 
     const refreshToken = jwt.sign(
       { sub: account.id, type: 'refresh' },
       refreshSecret,
-      { expiresIn: '7d' }
+      { ...jwtOptions, expiresIn: '7d' }
     );
 
     await accountRepository.updateRefreshToken(account.id, hashToken(refreshToken));
@@ -227,7 +233,7 @@ export const authService = {
       throw new AppError('Email ja cadastrado', 400);
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 10);
+    const passwordHash = await bcrypt.hash(data.password, env.BCRYPT_ROUNDS);
 
     return accountRepository.create({
       email,
@@ -254,7 +260,7 @@ export const authService = {
       throw new AppError('Senha atual invalida', 400);
     }
 
-    const passwordHash = await bcrypt.hash(data.newPassword, 10);
+    const passwordHash = await bcrypt.hash(data.newPassword, env.BCRYPT_ROUNDS);
 
     await accountRepository.updatePassword(account.id, passwordHash);
 
@@ -333,7 +339,7 @@ export const authService = {
       throw new AppError('Token invalido ou expirado', 400);
     }
 
-    const passwordHash = await bcrypt.hash(data.newPassword, 10);
+    const passwordHash = await bcrypt.hash(data.newPassword, env.BCRYPT_ROUNDS);
 
     await accountRepository.updatePassword(resetToken.accountId, passwordHash);
     await passwordResetRepository.markAsUsed(resetToken.id);
@@ -460,7 +466,7 @@ export const authService = {
       throw new AppError('Email ja cadastrado', 400);
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 10);
+    const passwordHash = await bcrypt.hash(data.password, env.BCRYPT_ROUNDS);
     const account = await accountRepository.create({
       email: normalizeEmail(invite.email),
       password: passwordHash,
@@ -519,7 +525,7 @@ export const authService = {
 
     const role = 'BARBERSHOP_ADMIN';
     const temporaryPassword = `${crypto.randomUUID().slice(0, 8)}Aa!1`;
-    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    const passwordHash = await bcrypt.hash(temporaryPassword, env.BCRYPT_ROUNDS);
 
     const account = await accountRepository.create({
       email,
@@ -554,7 +560,11 @@ export const authService = {
     }
 
     try {
-      const decoded = jwt.verify(data.refreshToken, refreshSecret) as {
+      const decoded = jwt.verify(data.refreshToken, refreshSecret, {
+        algorithms: ['HS256'],
+        issuer: env.JWT_ISSUER,
+        audience: env.JWT_AUDIENCE,
+      }) as {
         sub: string;
         type: string;
       };
@@ -576,7 +586,7 @@ export const authService = {
           type: 'access',
         },
         env.JWT_SECRET,
-        { expiresIn: '15m' }
+        { ...jwtOptions, expiresIn: '15m' }
       );
 
       const newRefreshToken = jwt.sign(
@@ -585,7 +595,7 @@ export const authService = {
           type: 'refresh',
         },
         refreshSecret,
-        { expiresIn: '7d' }
+        { ...jwtOptions, expiresIn: '7d' }
       );
 
       await accountRepository.updateRefreshToken(

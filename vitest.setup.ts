@@ -1,5 +1,8 @@
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET ??= 'test-secret';
+process.env.JWT_SECRET ??= 'test-secret-with-at-least-32-characters';
+process.env.JWT_REFRESH_SECRET ??= 'test-refresh-secret-with-32-characters';
+process.env.JWT_ISSUER ??= 'barberflow-api';
+process.env.JWT_AUDIENCE ??= 'barberflow-client';
 process.env.DATABASE_URL ??= 'postgresql://test:test@localhost:5432/test';
 process.env.APP_URL ??= 'http://localhost:3333';
 process.env.SMTP_HOST ??= 'smtp.test.local';

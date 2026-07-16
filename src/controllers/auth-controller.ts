@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { authService } from '../services/auth-service.js';
+import { env } from '../config/env.js';
 
 const strongPasswordSchema = z
   .string()
@@ -72,10 +73,18 @@ const refreshCookieName = 'barberflow_refresh';
 function setRefreshCookie(reply: FastifyReply, refreshToken: string) {
   reply.setCookie(refreshCookieName, refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: env.NODE_ENV === 'production',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
     path: '/api/auth',
     maxAge: 60 * 60 * 24 * 7,
+  });
+}
+
+function clearRefreshCookie(reply: FastifyReply) {
+  reply.clearCookie(refreshCookieName, {
+    path: '/api/auth',
+    secure: env.NODE_ENV === 'production',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
   });
 }
 
@@ -254,7 +263,7 @@ export const authController = {
 
     const result = await authService.logout(userId);
 
-    reply.clearCookie(refreshCookieName, { path: '/api/auth' });
+    clearRefreshCookie(reply);
     return reply.send(result);
   },
 
@@ -264,7 +273,7 @@ export const authController = {
       role: req.user!.role,
     });
 
-    reply.clearCookie(refreshCookieName, { path: '/api/auth' });
+    clearRefreshCookie(reply);
     return reply.send(result);
   },
 };
