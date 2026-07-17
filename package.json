@@ -18,6 +18,7 @@
     "db:backup": "bash scripts/backup-db.sh",
     "email:check": "tsx scripts/check-email.ts",
     "notifications:reminders": "tsx scripts/send-booking-reminders.ts",
+    "production:check": "NODE_ENV=production tsx scripts/check-production-readiness.ts",
     "secrets:generate": "tsx scripts/generate-production-secrets.ts",
     "smoke:production": "tsx scripts/smoke-production-flow.ts",
     "test": "TMPDIR=/tmp TEMP=/tmp TMP=/tmp vitest run",

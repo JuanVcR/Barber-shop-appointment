@@ -27,10 +27,11 @@ const envSchema = z.object({
     z.string().url().optional()
   ),
   UPLOAD_DIR: z.string().default('uploads'),
-  ALLOW_LOCAL_UPLOADS_IN_PRODUCTION: z.preprocess(
-    (v) => v === 'true' || v === true,
-    z.boolean().default(false)
-  ),
+  STORAGE_DRIVER: z.enum(['local', 'cloudinary']).default('local'),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_UPLOAD_FOLDER: z.string().default('barberflow'),
   GLOBAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   GLOBAL_RATE_LIMIT_WINDOW: z.string().min(1).default('1 minute'),
 }).superRefine((env, ctx) => {
@@ -89,6 +90,26 @@ const envSchema = z.object({
         path: ['SMTP_USER'],
         message: 'SMTP credentials must be real in production',
       });
+    }
+
+    if (env.STORAGE_DRIVER !== 'cloudinary') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['STORAGE_DRIVER'],
+        message: 'STORAGE_DRIVER must be cloudinary in production',
+      });
+    }
+  }
+
+  if (env.STORAGE_DRIVER === 'cloudinary') {
+    for (const key of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'] as const) {
+      if (!env[key]) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `${key} is required when STORAGE_DRIVER is cloudinary`,
+        });
+      }
     }
   }
 });

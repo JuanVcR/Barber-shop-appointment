@@ -2,10 +2,8 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { barbershopService } from '../services/barbershop-service.js';
 import crypto from 'node:crypto';
-import path from 'node:path';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { env } from '../config/env.js';
 import { AppError } from '../errors/app-error.js';
+import { imageStorageService } from '../services/image-storage-service.js';
 
 const getRequester = (req: FastifyRequest) => ({
   accountId: req.user!.id,
@@ -314,10 +312,6 @@ export const barbershopController = {
   },
 
   async uploadImage(req: FastifyRequest, reply: FastifyReply) {
-    if (env.NODE_ENV === 'production' && !env.ALLOW_LOCAL_UPLOADS_IN_PRODUCTION) {
-      throw new AppError('Uploads locais estao desativados em producao. Configure um storage externo.', 503);
-    }
-
     const { barbershopId, type } = imageParamsSchema.parse(req.params);
     const file = await req.file();
 
@@ -337,11 +331,13 @@ export const barbershopController = {
       throw new AppError('Arquivo invalido. Envie uma imagem real PNG, JPEG ou WebP', 400);
     }
 
-    const directory = path.resolve(env.UPLOAD_DIR, 'barbershops');
     const filename = `${barbershopId}-${type}-${crypto.randomUUID()}.${extension}`;
-    await mkdir(directory, { recursive: true });
-    await writeFile(path.join(directory, filename), buffer);
-    const url = `${env.APP_URL}/uploads/barbershops/${filename}`;
+    const url = await imageStorageService.upload({
+      buffer,
+      contentType: file.mimetype,
+      filename,
+      folder: 'barbershops',
+    });
 
     const barbershop = await barbershopService.update({
       requester: getRequester(req),
