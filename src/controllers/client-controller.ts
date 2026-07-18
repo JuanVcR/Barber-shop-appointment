@@ -8,6 +8,7 @@ const updateClientSchema = z.object({
   name: z.string().min(2).optional(),
   phone: z.string().min(11).optional(),
   cpf: z.string().min(11).optional(),
+  email: z.string().email().toLowerCase().optional(),
 });
 
 const getRequester = (req: FastifyRequest) => ({
@@ -44,7 +45,29 @@ export const clientController = {
       throw new AppError('Perfil de cliente não encontrado', 404);
     }
 
-    const updated = await clientRepository.update(client.id, body);
+    if (body.email) {
+      const existingAccount = await prisma.account.findUnique({
+        where: { email: body.email },
+      });
+
+      if (existingAccount && existingAccount.id !== accountId) {
+        throw new AppError('Email ja cadastrado', 400);
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (body.email) {
+        await tx.account.update({
+          where: { id: accountId },
+          data: { email: body.email },
+        });
+      }
+
+      return tx.client.update({
+        where: { id: client.id },
+        data: body,
+      });
+    });
 
     return reply.send(updated);
   },
