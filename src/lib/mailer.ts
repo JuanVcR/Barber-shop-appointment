@@ -13,7 +13,6 @@ export const mailer = nodemailer.createTransport({
     pass: env.SMTP_PASS,
   },
   tls: {
-    // allow custom rejection for self-signed certs in development
     rejectUnauthorized: env.SMTP_TLS_REJECT_UNAUTHORIZED ?? true,
   },
 });

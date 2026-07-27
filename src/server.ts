@@ -7,9 +7,6 @@ import { initializeMonitoring } from './config/monitoring.js';
 async function bootstrap() {
   initializeMonitoring();
   const app = await buildApp();
-
-  // Verify mailer transport on startup for easier debugging of SMTP issues,
-  // but only when SMTP credentials are present and not in test env.
   if ((env.SMTP_USER && env.SMTP_PASS) && env.NODE_ENV !== 'test') {
     try {
       const { verifyMailer } = await import('./lib/mailer.js');

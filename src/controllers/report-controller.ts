@@ -36,13 +36,9 @@ export const reportController = {
     if (!barber) {
       throw new AppError('Barbeiro não encontrado', 404);
     }
-
-    // Total de agendamentos
     const totalBookings = await prisma.booking.count({
       where: { barberId: barber.id },
     });
-
-    // Agendamentos este mês
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const monthStart = `${currentMonth}-01`;
@@ -55,8 +51,6 @@ export const reportController = {
         day: { gte: monthStart, lte: monthEnd },
       },
     });
-
-    // Receita total
     const bookingsWithPayment = await prisma.booking.findMany({
       where: {
         barberId: barber.id,
@@ -70,8 +64,6 @@ export const reportController = {
       (sum, booking) => sum + (booking.amountPaid || 0),
       0
     );
-
-    // Receita este mês
     const revenueThisMonth = await prisma.booking.aggregate({
       where: {
         barberId: barber.id,
@@ -81,8 +73,6 @@ export const reportController = {
       },
       _sum: { amountPaid: true },
     });
-
-    // Clientes únicos
     const uniqueClients = await prisma.booking.findMany({
       where: { barberId: barber.id, status: { not: 'CANCELLED' } },
       distinct: ['clientId'],
@@ -204,8 +194,6 @@ export const reportController = {
 
     const totalBookings = bookings.length;
     const totalRevenue = bookings.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
-
-    // Bookings por barbeiro
     const bookingsByBarber = await prisma.booking.groupBy({
       by: ['barberId'],
       where: whereClause,

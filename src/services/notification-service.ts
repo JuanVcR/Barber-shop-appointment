@@ -62,7 +62,6 @@ export const notificationService = {
 
       return { previewUrl: undefined };
     } catch (err) {
-      // In development, fall back to an Ethereal test account so developer can view the email
       if (env.NODE_ENV !== 'production') {
         try {
           const testAccount = await nodemailer.createTestAccount();
@@ -90,7 +89,6 @@ export const notificationService = {
           const previewUrl = nodemailer.getTestMessageUrl(info) ?? undefined;
           return { previewUrl };
         } catch (testErr) {
-          // If even the test send fails, return an explicit application error
           throw new AppError('Falha ao enviar email de recuperacao', 400);
         }
       }

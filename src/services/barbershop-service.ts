@@ -413,13 +413,9 @@ export const barbershopService = {
     await this.ensureCanManageBarbershop(data.requester, data.barbershopId);
 
     const { prisma } = await import('../database/prisma.js');
-
-    // Deletar horários existentes
     await prisma.barbershopWorkingHour.deleteMany({
       where: { barbershopId: data.barbershopId },
     });
-
-    // Criar novos horários
     const created = await prisma.barbershopWorkingHour.createMany({
       data: data.workingHours.map(wh => ({
         barbershopId: data.barbershopId,
@@ -428,8 +424,6 @@ export const barbershopService = {
         endTime: wh.endTime,
       })),
     });
-
-    // Retornar os horários atualizados
     return prisma.barbershopWorkingHour.findMany({
       where: { barbershopId: data.barbershopId },
       orderBy: { weekDay: 'asc' },

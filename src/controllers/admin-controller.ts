@@ -380,8 +380,6 @@ export const adminController = {
     reply: FastifyReply
   ) {
     const { barbershopId } = req.params;
-
-    // Validar permissão
     const admin = await barbershopAdminRepository.findByAccountAndBarbershop(
       req.user.id,
       barbershopId
@@ -408,8 +406,6 @@ export const adminController = {
     reply: FastifyReply
   ) {
     const { barbershopId, adminId } = req.params;
-
-    // Validar permissão
     const admin = await barbershopAdminRepository.findByAccountAndBarbershop(
       req.user.id,
       barbershopId
