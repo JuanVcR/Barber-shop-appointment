@@ -69,6 +69,40 @@ export const barbershopService = {
     });
   },
 
+  async createPartnerSignup(data: {
+    name: string;
+    slug: string;
+    cnpj?: string | null;
+    address?: string | null;
+    phoneOwner?: string | null;
+    admin: {
+      email: string;
+      password: string;
+    };
+  }) {
+    const existingBarbershop = await barbershopRepository.findBySlug(data.slug);
+
+    if (existingBarbershop) {
+      throw new AppError('Ja existe uma barbearia com esse nome', 400);
+    }
+
+    const account = await authService.createAccount({
+      email: data.admin.email,
+      password: data.admin.password,
+      role: 'BARBERSHOP_ADMIN',
+    });
+
+    return barbershopRepository.create({
+      name: data.name,
+      slug: data.slug,
+      cnpj: data.cnpj,
+      address: data.address,
+      phoneOwner: data.phoneOwner,
+      plan: 'FREE',
+      adminAccountId: account.id,
+    });
+  },
+
   async setup(data: {
     requester: {
       accountId: string;
@@ -277,11 +311,8 @@ export const barbershopService = {
   }) {
     await this.ensureCanManageBarbershop(data.requester, data.barbershopId);
 
-    if (
-      data.requester.role !== 'SUPER_ADMIN' &&
-      (data.plan !== undefined || data.setupCompleted !== undefined)
-    ) {
-      throw new AppError('Apenas super admin pode alterar plano ou status', 403);
+    if (data.requester.role !== 'SUPER_ADMIN' && data.setupCompleted !== undefined) {
+      throw new AppError('Apenas super admin pode alterar status', 403);
     }
 
     const barbershop = await barbershopRepository.findById(data.barbershopId);

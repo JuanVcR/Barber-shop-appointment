@@ -26,6 +26,19 @@ enum BarbershopPlan {
   PRO
 }
 
+enum BarbershopSubscriptionStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum PlanPaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
 enum BookingStatus {
   SCHEDULED
   CANCELLED
@@ -93,6 +106,8 @@ model Barbershop {
   logoUrl         String?
   coverUrl        String?
   plan            BarbershopPlan @default(FREE)
+  subscriptionStatus BarbershopSubscriptionStatus @default(ACTIVE)
+  subscriptionCancelledAt DateTime?
   setupCompleted  Boolean        @default(false)
   emailVerifiedAt DateTime?
   createdAt       DateTime       @default(now())
@@ -104,6 +119,39 @@ model Barbershop {
   services      Service[]
   bookings      Booking[]
   workingHours  BarbershopWorkingHour[]
+  planPayments  PlanPayment[]
+}
+
+model PlanPayment {
+  id                String            @id @default(uuid())
+  barbershopId      String
+  plan              BarbershopPlan
+  amount            Float
+  status            PlanPaymentStatus @default(PENDING)
+  provider          String            @default("mercado_pago")
+  providerPaymentId String?           @unique
+  qrCode            String?
+  qrCodeBase64      String?
+  ticketUrl         String?
+  expiresAt         DateTime?
+  paidAt            DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@index([barbershopId, createdAt])
+  @@index([status])
+}
+
+model PlanPrice {
+  id                 String         @id @default(uuid())
+  plan               BarbershopPlan @unique
+  amount             Float?
+  pendingAmount      Float?
+  pendingEffectiveAt DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 }
 
 model BarbershopAdmin {

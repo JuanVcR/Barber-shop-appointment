@@ -1,0 +1,19 @@
+CREATE TABLE "PlanPrice" (
+    "id" TEXT NOT NULL,
+    "plan" "BarbershopPlan" NOT NULL,
+    "amount" DOUBLE PRECISION,
+    "pendingAmount" DOUBLE PRECISION,
+    "pendingEffectiveAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PlanPrice_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "PlanPrice_plan_key" ON "PlanPrice"("plan");
+
+INSERT INTO "PlanPrice" ("id", "plan", "amount", "updatedAt")
+VALUES
+  ('11111111-1111-4111-8111-111111111111', 'FREE', 0, CURRENT_TIMESTAMP),
+  ('22222222-2222-4222-8222-222222222222', 'BASIC', 49.90, CURRENT_TIMESTAMP),
+  ('33333333-3333-4333-8333-333333333333', 'PRO', NULL, CURRENT_TIMESTAMP);

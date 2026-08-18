@@ -19,7 +19,7 @@ const createBookingSchema = z.object({
 }).refine((data) => data.serviceId || data.serviceIds?.length, {
   message: 'Informe serviceId ou serviceIds',
 }).refine((data) => data.time || data.startTime, {
-  message: 'Informe time ou startTime',
+  message: 'Informe time ou startTime', 
 });
 
 const createGuestBookingSchema = createBookingSchema.extend({

@@ -368,6 +368,8 @@ export const adminController = {
       latitude: admin.barbershop.latitude,
       longitude: admin.barbershop.longitude,
       plan: admin.barbershop.plan,
+      subscriptionStatus: admin.barbershop.subscriptionStatus,
+      subscriptionCancelledAt: admin.barbershop.subscriptionCancelledAt,
       setupCompleted: admin.barbershop.setupCompleted,
       createdAt: admin.barbershop.createdAt,
     }));

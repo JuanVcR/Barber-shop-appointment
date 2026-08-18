@@ -53,6 +53,21 @@ describe('barbershop plan rules', () => {
     ).rejects.toThrow('Limite do plano FREE');
   });
 
+  it('blocks new barbers when the initial plan already has one professional', async () => {
+    barbershopRepository.findById.mockResolvedValue({
+      id: 'shop-1',
+      plan: 'FREE',
+    });
+    barberRepository.findManyByBarbershopId.mockResolvedValue([{ id: 'barber-1' }]);
+    barberInviteRepository.findManyPendingByBarbershopId.mockResolvedValue([]);
+
+    const { barbershopService } = await import('./barbershop-service.js');
+
+    await expect(
+      barbershopService.ensurePlanCapacity('shop-1', 'barbers')
+    ).rejects.toThrow('Limite do plano FREE');
+  });
+
   it('requires working hours, services and barbers before activation', async () => {
     barbershopRepository.findById.mockResolvedValue({
       id: 'shop-1',

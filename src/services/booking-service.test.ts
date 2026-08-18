@@ -224,4 +224,45 @@ describe('bookingService', () => {
     expect(result).not.toContain('09:20');
     expect(result).toContain('09:40');
   });
+
+  it('should space available times by total duration when multiple services are selected', async () => {
+    const { bookingService } = await import('./booking-service.js');
+    const { serviceRepository } = await import('../repositories/service-repository.js');
+    const { barberRepository } = await import('../repositories/barber-repository.js');
+    const { bookingRepository } = await import('../repositories/booking-repository.js');
+    const { barbershopRepository } = await import('../repositories/barbershop-repository.js');
+
+    vi.mocked(serviceRepository.findManyByIds).mockResolvedValue([
+      {
+        id: 'service-1',
+        barbershopId: 'shop-1',
+        duration: 60,
+        barbers: [{ barberId: 'barber-1' }],
+      },
+      {
+        id: 'service-2',
+        barbershopId: 'shop-1',
+        duration: 20,
+        barbers: [{ barberId: 'barber-1' }],
+      },
+    ] as never);
+    vi.mocked(barberRepository.findById).mockResolvedValue({
+      id: 'barber-1',
+      barbershopId: 'shop-1',
+    } as never);
+    vi.mocked(bookingRepository.findByBarberDay).mockResolvedValue([] as never);
+    vi.mocked(barberRepository.findBlocksByBarberDay).mockResolvedValue([] as never);
+    vi.mocked(barbershopRepository.findWorkingHour).mockResolvedValue({
+      startTime: '08:00',
+      endTime: '12:00',
+    } as never);
+
+    const result = await bookingService.listAvailableTimes({
+      barberId: 'barber-1',
+      serviceIds: ['service-1', 'service-2'],
+      day: '2027-04-10',
+    });
+
+    expect(result).toEqual(['08:00', '09:20', '10:40']);
+  });
 });

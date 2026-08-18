@@ -27,6 +27,26 @@ const createBarbershopSchema = z.object({
   }).optional(),
 });
 
+const strongPasswordSchema = z
+  .string()
+  .min(8)
+  .regex(/[A-Z]/, 'A senha deve ter ao menos uma letra maiuscula')
+  .regex(/[a-z]/, 'A senha deve ter ao menos uma letra minuscula')
+  .regex(/[0-9]/, 'A senha deve ter ao menos um numero')
+  .regex(/[^A-Za-z0-9]/, 'A senha deve ter ao menos um simbolo');
+
+const partnerSignupSchema = z.object({
+  name: z.string().min(2),
+  slug: z.string().min(1),
+  cnpj: z.string().min(14).optional(),
+  address: z.string().min(3),
+  phoneOwner: z.string().min(10),
+  admin: z.object({
+    email: z.string().email().toLowerCase(),
+    password: strongPasswordSchema,
+  }),
+});
+
 const barbershopParamsSchema = z.object({
   barbershopId: z.string().uuid(),
 });
@@ -160,6 +180,14 @@ export const barbershopController = {
       requester: getRequester(req),
       ...body,
     });
+
+    return reply.status(201).send(barbershop);
+  },
+
+  async createPartnerSignup(req: FastifyRequest, reply: FastifyReply) {
+    const body = partnerSignupSchema.parse(req.body);
+
+    const barbershop = await barbershopService.createPartnerSignup(body);
 
     return reply.status(201).send(barbershop);
   },

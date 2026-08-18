@@ -15,6 +15,8 @@ import { clientRoutes } from './routes/client-routes.js';
 import { adminRoutes } from './routes/admin-routes.js';
 import { serviceRoutes } from './routes/service-routes.js';
 import { reportRoutes } from './routes/report-routes.js';
+import { planPaymentRoutes } from './routes/plan-payment-routes.js';
+import { planSettingsRoutes } from './routes/plan-settings-routes.js';
 import { ZodError } from 'zod';
 import { env } from './config/env.js';
 import { corsOrigins } from './config/env.js';
@@ -99,6 +101,8 @@ export async function buildApp() {
   app.register(adminRoutes, { prefix: '/api' });
   app.register(serviceRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });
+  app.register(planPaymentRoutes, { prefix: '/api' });
+  app.register(planSettingsRoutes, { prefix: '/api' });
 
    app.setErrorHandler((error: unknown, req, reply) => {
     req.log.error(error);

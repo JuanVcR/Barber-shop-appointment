@@ -453,8 +453,7 @@ export const bookingService = {
 
     const existing = await bookingRepository.findByBarberDay(data.barberId, data.day);
     const totalDuration = services.reduce((total, service) => total + service.duration, 0);
-    const shortestServiceDuration = Math.min(...services.map((service) => service.duration));
-    const step = Math.max(5, shortestServiceDuration);
+    const step = Math.max(5, totalDuration);
     const barbershopWorkingHour = await barbershopRepository.findWorkingHour(
       barber.barbershopId,
       getWeekDayFromDay(data.day)

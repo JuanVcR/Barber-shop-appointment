@@ -34,6 +34,7 @@ const envSchema = z.object({
   CLOUDINARY_UPLOAD_FOLDER: z.string().default('barberflow'),
   GLOBAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   GLOBAL_RATE_LIMIT_WINDOW: z.string().min(1).default('1 minute'),
+  MERCADO_PAGO_ACCESS_TOKEN: z.string().optional(),
 }).superRefine((env, ctx) => {
   if (
     env.NODE_ENV === 'production' &&
@@ -97,6 +98,14 @@ const envSchema = z.object({
         code: 'custom',
         path: ['STORAGE_DRIVER'],
         message: 'STORAGE_DRIVER must be cloudinary in production',
+      });
+    }
+
+    if (!env.MERCADO_PAGO_ACCESS_TOKEN) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MERCADO_PAGO_ACCESS_TOKEN'],
+        message: 'MERCADO_PAGO_ACCESS_TOKEN is required in production',
       });
     }
   }

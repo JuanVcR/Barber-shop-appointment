@@ -12,6 +12,12 @@ export async function barbershopRoutes(app: FastifyInstance) {
   );
 
   app.post(
+    '/barbershops/partner-signup',
+    { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } },
+    barbershopController.createPartnerSignup
+  );
+
+  app.post(
     '/admin/barbershops',
     { preHandler: authMiddleware },
     barbershopController.create

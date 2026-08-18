@@ -10,6 +10,7 @@ vi.mock('../controllers/barbershop-controller.js', () => ({
       return reply.send({ id: 'shop-1', slug: 'barbearia-alpha' });
     },
     create: async (_req: any, reply: any) => reply.status(201).send({ id: 'shop-1' }),
+    createPartnerSignup: async (_req: any, reply: any) => reply.status(201).send({ id: 'shop-1' }),
     update: async (_req: any, reply: any) => reply.send({ id: 'shop-1' }),
     createService: async (_req: any, reply: any) => reply.status(201).send({ id: 'service-1' }),
     setup: async (_req: any, reply: any) => reply.send({ id: 'shop-1' }),

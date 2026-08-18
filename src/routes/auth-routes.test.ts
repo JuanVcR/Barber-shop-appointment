@@ -44,6 +44,7 @@ vi.mock('../controllers/barbershop-controller.js', () => ({
     list: async (_req: any, reply: any) => reply.send([]),
     getBySlug: async (_req: any, reply: any) => reply.send({}),
     create: async (_req: any, reply: any) => reply.status(201).send({}),
+    createPartnerSignup: async (_req: any, reply: any) => reply.status(201).send({}),
     update: async (_req: any, reply: any) => reply.send({}),
     createService: async (_req: any, reply: any) => reply.status(201).send({}),
     setup: async (_req: any, reply: any) => reply.send({}),

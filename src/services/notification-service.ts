@@ -8,6 +8,39 @@ export function buildPasswordResetUrl(token: string) {
 }
 
 export const notificationService = {
+  async sendPlanPriceChangeEmail(data: {
+    to: string[];
+    effectiveAt: string;
+    changes: Array<{
+      plan: string;
+      oldPrice: string;
+      newPrice: string;
+    }>;
+  }) {
+    if (data.to.length === 0) return;
+
+    const priceLines = data.changes
+      .map((change) => `<li>Plano ${change.plan}: de ${change.oldPrice} para ${change.newPrice}/mes</li>`)
+      .join('');
+
+    await mailer.sendMail({
+      from: env.SMTP_FROM,
+      to: data.to,
+      subject: 'Reajuste nos planos BarberFlow',
+      html: `
+        <p>Ola,</p>
+        <p>Escrevemos para informar que, a partir de ${data.effectiveAt}, os valores dos planos BarberFlow passarao por um reajuste.</p>
+        <p>Os novos precos serao:</p>
+        <ul>${priceLines}</ul>
+        <p>Esse ajuste reflete melhorias continuas na plataforma e nos permite continuar investindo em novos recursos e no suporte que voce ja conhece.</p>
+        <p>Se voce ja e assinante de um desses planos, a nova cobranca sera aplicada a partir do seu proximo ciclo de faturamento. Nenhuma acao e necessaria da sua parte.</p>
+        <p>Em caso de duvidas, nossa equipe esta a disposicao pelo e-mail suporte@barberflow.com.</p>
+        <p>Agradecemos por fazer parte do BarberFlow.</p>
+        <p>Atenciosamente,<br>Equipe BarberFlow</p>
+      `,
+    });
+  },
+
   async sendBookingEmail(data: {
     to?: string | null;
     clientName: string;
