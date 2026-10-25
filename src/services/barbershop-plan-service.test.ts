@@ -89,4 +89,40 @@ describe('barbershop plan rules', () => {
       })
     ).rejects.toThrow('Para ativar');
   });
+
+  it('prevents a barbershop admin from changing the plan without paying', async () => {
+    barbershopRepository.findAdmin.mockResolvedValue({ id: 'admin-link-1' });
+
+    const { barbershopService } = await import('./barbershop-service.js');
+
+    await expect(
+      barbershopService.update({
+        requester: { accountId: 'admin-1', role: 'BARBERSHOP_ADMIN' },
+        barbershopId: 'shop-1',
+        plan: 'PRO',
+      })
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect(barbershopRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('lets a super admin change the plan', async () => {
+    barbershopRepository.findById.mockResolvedValue({ id: 'shop-1', plan: 'FREE' });
+    serviceRepository.findByBarbershopId.mockResolvedValue([]);
+    barberRepository.findManyByBarbershopId.mockResolvedValue([]);
+    barberInviteRepository.findManyPendingByBarbershopId.mockResolvedValue([]);
+    barbershopRepository.update.mockResolvedValue({ id: 'shop-1', plan: 'PRO' });
+
+    const { barbershopService } = await import('./barbershop-service.js');
+
+    await barbershopService.update({
+      requester: { accountId: 'super-1', role: 'SUPER_ADMIN' },
+      barbershopId: 'shop-1',
+      plan: 'PRO',
+    });
+
+    expect(barbershopRepository.update).toHaveBeenCalledWith(
+      'shop-1',
+      expect.objectContaining({ plan: 'PRO' })
+    );
+  });
 });
