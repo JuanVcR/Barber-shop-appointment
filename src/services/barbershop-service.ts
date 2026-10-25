@@ -315,6 +315,10 @@ export const barbershopService = {
       throw new AppError('Apenas super admin pode alterar status', 403);
     }
 
+    if (data.requester.role !== 'SUPER_ADMIN' && data.plan !== undefined) {
+      throw new AppError('Apenas super admin pode alterar o plano. Use o pagamento Pix.', 403);
+    }
+
     const barbershop = await barbershopRepository.findById(data.barbershopId);
 
     if (!barbershop) {
